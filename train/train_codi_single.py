@@ -16,7 +16,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from train.codi_core import add_common_args, build_projector, latent_block, run_training, shared_teacher
 from data.dataset import IGNORE_INDEX, build_codi_single_dataset
-from tokens import add_trace_tokens, token_ids
+from data.tokens import add_trace_tokens, token_ids
 
 
 class CodiSingle(nn.Module):
@@ -83,8 +83,7 @@ def main():
     model = CodiSingle(base, latent_start_id=ids["<|latent_start|>"], latent_end_id=ids["<|latent_end|>"],
                        latent_steps=args.latent_steps, a=args.alpha, b=args.beta, g=args.gamma)
 
-    ds = build_codi_single_dataset(tok, sources=args.sources, cache_dir=args.cache_dir,
-                                   n_samples=args.n_samples, max_seq_len=args.max_seq_len, max_frames=args.max_frames)
+    ds = build_codi_single_dataset(tok, args.cache_dir, max_len=args.max_seq_len, n_samples=args.n_samples)
     print(f"{len(ds)} codi-single examples, latent_steps={args.latent_steps}")
     run_training(model, tok, ds, args, "codi_single")
 

@@ -2,7 +2,7 @@
 
 Add a converted dataset by running its folder's convert.py (saves ./data via
 save_to_disk) and listing it in _LOCAL. cruxeval keeps its own Hub-fallback
-loader and is held out entirely for eval (eval_cruxeval_*.py), never trained on.
+loader and is held out entirely for eval (eval_len.py via a cruxeval_codi cache), never trained on.
 """
 
 from __future__ import annotations

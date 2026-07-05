@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from tokens import TRACE_TOKENS, add_trace_tokens, token_ids
+from data.tokens import TRACE_TOKENS, add_trace_tokens, token_ids
 
 BASE = os.environ.get("CODI_BASE")
 

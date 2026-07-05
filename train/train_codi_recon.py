@@ -12,8 +12,9 @@ from torch.utils.checkpoint import checkpoint
 from transformers import AutoModelForCausalLM, AutoTokenizer, DynamicCache
 
 from train.codi_core import add_common_args, build_projector, latent_block, run_training, shared_teacher
-from data.dataset import IGNORE_INDEX, build_codi_dataset
-from tokens import add_trace_tokens, token_ids
+from data.cache import load_cache
+from data.dataset import IGNORE_INDEX
+from data.tokens import add_trace_tokens, token_ids
 
 
 class CodiRecon(nn.Module):
@@ -146,9 +147,9 @@ def main():
                       debug_recon_print=args.debug_recon_print)
     model.tok = tok
 
-    ds = build_codi_dataset(tok, sources=args.sources, cache_dir=args.cache_dir,
-                            n_samples=args.n_samples, max_seq_len=args.max_seq_len, max_frames=args.max_frames,
-                            require_recon_targets=True)
+    ds = load_cache(args.cache_dir, max_len=args.max_seq_len, n_samples=args.n_samples)
+    if any("recon_targets" not in e for e in ds):
+        raise ValueError(f"{args.cache_dir} lacks recon_targets; rerun precompute.py --mode codi")
     print(f"{len(ds)} codi examples, latent_steps={args.latent_steps}, "
           f"recon_w={args.recon_w}, max_recon_len={args.max_recon_len}")
     run_training(model, tok, ds, args, "codi_recon")

@@ -18,8 +18,9 @@ import torch.nn.functional as F
 from transformers import AutoModelForCausalLM, AutoTokenizer, DynamicCache
 
 from train.codi_core import add_common_args, build_projector, latent_block, run_training, shared_teacher
-from data.dataset import IGNORE_INDEX, build_codi_dataset
-from tokens import add_trace_tokens, token_ids
+from data.cache import load_cache
+from data.dataset import IGNORE_INDEX
+from data.tokens import add_trace_tokens, token_ids
 
 
 class CodiModel(nn.Module):
@@ -173,8 +174,7 @@ def main():
                       ss_prob=args.ss_prob, ss_ramp_frac=args.ss_ramp_frac,
                       teacher=teacher, kd_target=args.kd_target, kd_temp=args.kd_temp)
 
-    ds = build_codi_dataset(tok, sources=args.sources, cache_dir=args.cache_dir,
-                            n_samples=args.n_samples, max_seq_len=args.max_seq_len, max_frames=args.max_frames)
+    ds = load_cache(args.cache_dir, max_len=args.max_seq_len, n_samples=args.n_samples)
     print(f"{len(ds)} codi examples, latent_steps={args.latent_steps}")
     run_training(model, tok, ds, args, "codi")
 

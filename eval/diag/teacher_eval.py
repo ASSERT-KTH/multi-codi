@@ -1,6 +1,6 @@
 """Diagnostic B: explicit-trace ("teacher") pass@1 of a CODI checkpoint.
 
-Loads the CODI wrapper (eval_cruxeval_sft can't: state_dict has a model./prj.
+Loads the CODI wrapper (the SFT eval can't: state_dict has a model./prj.
 prefix) and generates the explicit trace on the base LM, like the SFT eval.
 Comparing to the latent eval (same ckpt) and standalone SFT (0.576) isolates
 whether the gap is the latent path or a degraded co-trained teacher.
@@ -17,9 +17,9 @@ import torch.distributed as dist
 
 from data.dataset import _prompt_str
 from data.sources import load_cruxeval
-from eval.eval_cruxeval_codi import load_codi
-from eval.eval_cruxeval_sft import check_correct, extract_answer_trace_full
-from tokens import token_ids
+from eval.codi_infer import load_codi
+from eval.scoring import check_correct, extract_answer_trace_full
+from data.tokens import token_ids
 
 
 def main():

@@ -16,8 +16,9 @@ from transformers import (
 )
 from transformers.trainer_utils import get_last_checkpoint
 
-from data.dataset import IGNORE_INDEX, build_dataset
-from tokens import add_trace_tokens, resize_and_init
+from data.cache import load_cache
+from data.dataset import IGNORE_INDEX
+from data.tokens import add_trace_tokens, resize_and_init
 from wb import wandb_init
 
 
@@ -41,8 +42,7 @@ def main():
     ap.add_argument("--model", default="Qwen/Qwen2.5-Coder-1.5B")
     ap.add_argument("--output_dir", required=True)
     ap.add_argument("--n_samples", type=int, default=-1)
-    ap.add_argument("--max_seq_len", type=int, default=4096)
-    ap.add_argument("--max_frames", type=int, default=-1)
+    ap.add_argument("--max_seq_len", type=int, default=4096)  # load-time token filter
     ap.add_argument("--epochs", type=float, default=3.0)
     ap.add_argument("--lr", type=float, default=1e-5)
     ap.add_argument("--batch_size", type=int, default=4)
@@ -60,8 +60,8 @@ def main():
     n_added = add_trace_tokens(tok)
     resize_and_init(model, tok, n_added)
 
-    ds = build_dataset(tok, sources=args.sources, cache_dir=args.cache_dir,
-                       n_samples=args.n_samples, max_seq_len=args.max_seq_len, max_frames=args.max_frames)
+    ds = [(e["input_ids"], e["labels"])
+          for e in load_cache(args.cache_dir, max_len=args.max_seq_len, n_samples=args.n_samples)]
     print(f"{len(ds)} trace examples")
 
     report_to = wandb_init(args, "sft")

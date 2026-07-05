@@ -5,7 +5,7 @@ import json
 
 from transformers import AutoTokenizer
 
-from tokens import add_trace_tokens, token_ids
+from data.tokens import add_trace_tokens, token_ids
 
 
 def main():

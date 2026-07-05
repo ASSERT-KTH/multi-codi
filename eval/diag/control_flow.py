@@ -3,7 +3,7 @@
 The student emits each executed source line explicitly (only $LOCALS is latent),
 so a generation reveals its control-flow path. Compare that path to ground truth:
 wrong answer + matching path = value bottleneck; wrong answer + diverged path =
-latent lost branch-driving state. Reads an eval_cruxeval_codi --out JSON, no GPU.
+latent lost branch-driving state. Reads an eval_len --mode codi --out JSON, no GPU.
 """
 
 import argparse

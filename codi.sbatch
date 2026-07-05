@@ -1,0 +1,82 @@
+#!/bin/bash
+#SBATCH -A naiss2026-3-261
+#SBATCH -C 4xA100fat
+#SBATCH --gpus-per-node=A100fat:4
+#SBATCH -t 1-00:00:00
+#SBATCH -J codi
+#SBATCH -o codi_%j.log
+
+# Unified CODI training launcher. MODE picks the variant, SIZE picks the base checkpoint.
+#   frozen : train_codi + frozen SFT teacher (no teacher CE) + last-layer hidden/logit KD (alpha 0)
+#   multi  : train_codi, full-layer + multi-anchor KD
+#   recon  : train_codi_recon, co-trained CODI + locals reconstruction
+#   single : train_codi_single, faithful single-block CODI
+# frozen/multi/recon run on 4x A100fat (header default). single needs A40 -> override at submit:
+#   sbatch -C 4xA40 --gpus-per-node=A40:4 --export=ALL,MODE=single,SIZE=1.5b codi.sbatch
+export PATH=/mimer/NOBACKUP/groups/assert-kth/siruil/conda_envs/CWM/bin:$PATH
+export HF_HUB_OFFLINE=1 HF_DATASETS_OFFLINE=1 PYTHONHASHSEED=0
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+
+MODE="${MODE:?set MODE=frozen|multi|recon|single}"
+SIZE="${SIZE:-1.5b}"
+
+# Base SFT checkpoint by size (student/teacher init); output defaults to codi_<mode>_<size>.
+case "$SIZE" in
+  1.5b) : "${MODEL:=model_weights/sft1.5b_lr1e5_bs32/checkpoint-6936}" ;;
+  3b)   : "${MODEL:=model_weights/sft3b_lr1e5_bs32/checkpoint-3000}" ;;
+  *)    echo "unknown SIZE=$SIZE (want 1.5b|3b)" >&2; exit 1 ;;
+esac
+: "${OUTPUT_DIR:=model_weights/codi_${MODE}_${SIZE}}"
+
+# Per-mode: module, differing defaults, and the flags unique to that variant.
+MODE_ARGS=()
+case "$MODE" in
+  frozen)
+    MODULE=train.train_codi
+    : "${ALPHA:=0}"
+    MODE_ARGS=(
+      --frozen_teacher "${FROZEN_TEACHER:-$MODEL}"
+      --kd_target "${KD_TARGET:-hidden}"
+      --kd_temp "${KD_TEMP:-2.0}"
+    ) ;;
+
+  multi)
+    MODULE=train.train_codi
+    MODE_ARGS=(
+      --ss_prob "${SS_PROB:-0}"
+    ) ;;
+
+  recon)
+    MODULE=train.train_codi_recon
+    MODE_ARGS=(
+      --recon_w "${RECON_W:-0.1}"
+      --max_recon_len "${MAX_RECON_LEN:-64}"
+      --debug_recon_print "${DEBUG_RECON_PRINT:-0}"
+    ) ;;
+
+  single)
+    MODULE=train.train_codi_single
+    : "${LATENT_STEPS:=${LS:-6}}" ;;
+
+  *)
+    echo "unknown MODE=$MODE (want frozen|multi|recon|single)" >&2
+    exit 1 ;;
+esac
+
+torchrun --nproc_per_node=4 --master_port=$((20000 + RANDOM % 10000)) -m "$MODULE" \
+  --model "$MODEL" \
+  --output_dir "$OUTPUT_DIR" \
+  --max_seq_len 3072 \
+  --epochs 5 \
+  --lr 1e-5 \
+  --latent_steps "${LATENT_STEPS:-1}" \
+  --max_steps "${MAX_STEPS:-1500}" \
+  --save_steps "${SAVE_STEPS:-300}" \
+  --cache_dir "${CACHE_DIR:-data/cache/codi_train}" \
+  --optim "${OPTIM:-paged_adamw_8bit}" \
+  --alpha "${ALPHA:-1.0}" \
+  --beta "${BETA:-1.0}" \
+  --gamma "${GAMMA:-1.0}" \
+  --batch_size "${BATCH:-1}" \
+  --grad_accum "${ACCUM:-4}" \
+  "${MODE_ARGS[@]}"

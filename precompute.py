@@ -23,9 +23,9 @@ os.environ.setdefault("RAYON_NUM_THREADS", "1")
 
 from datasets import Dataset
 from data.dataset import build_codi_example, build_example, rows_for_sources
-from tokens import add_trace_tokens
+from data.tokens import add_trace_tokens
 
-TOK = MAX_LEN = MAX_FRAMES = MODE = TIMEOUT = None
+TOK = MAX_FRAMES = MODE = TIMEOUT = None
 
 
 def _alarm(*_):
@@ -36,14 +36,14 @@ def _no_net(*_a, **_k):
     raise OSError("network disabled")
 
 
-def _init(model, max_len, max_frames, mode, timeout):
+def _init(model, max_frames, mode, timeout):
     import socket
     from transformers import AutoTokenizer
 
-    global TOK, MAX_LEN, MAX_FRAMES, MODE, TIMEOUT
+    global TOK, MAX_FRAMES, MODE, TIMEOUT
     TOK = AutoTokenizer.from_pretrained(model, use_fast=True)
     add_trace_tokens(TOK)
-    MAX_LEN, MAX_FRAMES, MODE, TIMEOUT = max_len, max_frames, mode, timeout
+    MAX_FRAMES, MODE, TIMEOUT = max_frames, mode, timeout
     signal.signal(signal.SIGALRM, _alarm)
     # DNS (getaddrinfo) blocks in C and ignores SIGALRM, hanging the pool.
     socket.getaddrinfo = socket.create_connection = socket.socket = _no_net
@@ -53,12 +53,13 @@ def _work(row):
     signal.alarm(TIMEOUT)
     try:
         if MODE == "codi":
-            ex = build_codi_example(row["code"], row["input"], TOK, max_seq_len=MAX_LEN, max_frames=MAX_FRAMES)
+            ex = build_codi_example(row["code"], row["input"], TOK, max_frames=MAX_FRAMES)
         else:
-            pair = build_example(row["code"], row["input"], TOK, max_seq_len=MAX_LEN, max_frames=MAX_FRAMES)
+            pair = build_example(row["code"], row["input"], TOK, max_frames=MAX_FRAMES)
             ex = None if pair is None else {"input_ids": pair[0], "labels": pair[1]}
         if ex is not None:
             ex["row_id"] = row["id"]
+            ex["code"], ex["input"], ex["output"] = row["code"], row["input"], row["output"]
         return ex
     except Exception:
         return None
@@ -86,8 +87,7 @@ def main():
     ap.add_argument("--mode", choices=["sft", "codi"], default="sft")
     ap.add_argument("--sources", nargs="+", default=["mbpp", "humaneval", "pyx"])
     ap.add_argument("--n_samples", type=int, default=-1)
-    ap.add_argument("--max_seq_len", type=int, default=6144)
-    ap.add_argument("--max_frames", type=int, default=256)
+    ap.add_argument("--max_frames", type=int, default=1024)
     ap.add_argument("--out", required=True)
     ap.add_argument("--workers", type=int, default=max(1, mp.cpu_count() // 2))
     ap.add_argument("--chunksize", type=int, default=32)
@@ -108,7 +108,7 @@ def main():
 
     n = len(rows)
     print(f"{n} rows -> {args.out} ({args.mode}, workers={args.workers})", flush=True)
-    init_args = (args.model, args.max_seq_len, args.max_frames, args.mode, args.timeout)
+    init_args = (args.model, args.max_frames, args.mode, args.timeout)
     if args.workers == 1:
         _init(*init_args)
         results = map(_work, rows)
