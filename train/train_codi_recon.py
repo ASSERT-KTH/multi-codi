@@ -1,6 +1,8 @@
-"""Per-frame CODI + delta-locals reconstruction. AR readout decodes each frame's
-delta-locals from the latent block (attention masked to the latent block only, so it
-can't copy the prompt). L = a*Lt + b*Ls + g*Lkd + recon_w*Lrec."""
+"""Per-frame CODI + locals reconstruction. AR readout decodes each frame's locals from
+the latents. Two independent knobs: --recon_attn {local,full} (local masks attention to
+the latent block so it can't copy the prompt; full attends everything) and the recon
+target baked into the cache (delta vs full state, set at precompute --recon_target).
+L = a*Lt + b*Ls + g*Lkd + recon_w*Lrec."""
 
 import argparse
 import os
@@ -20,13 +22,13 @@ from data.tokens import add_trace_tokens, token_ids
 class CodiRecon(nn.Module):
     def __init__(self, base, *, latent_start_id, latent_end_id, latent_steps,
                  a=1.0, b=1.0, g=1.0, recon_w=1.0, max_recon_len=128,
-                 debug_recon_print=0):
+                 recon_attn="local", debug_recon_print=0):
         super().__init__()
         self.model = base
         ref = base.get_input_embeddings().weight
         self.prj = build_projector(base.config.hidden_size, ref.device, ref.dtype)
         self.latent_steps, self.a, self.b, self.g, self.recon_w = latent_steps, a, b, g, recon_w
-        self.max_recon_len = max_recon_len
+        self.max_recon_len, self.recon_attn = max_recon_len, recon_attn
         self.debug_recon_print, self._debug_seen = debug_recon_print, 0
         self.register_buffer("_ls_tok", torch.tensor([[latent_start_id]], dtype=torch.long), persistent=False)
         self.register_buffer("_le_tok", torch.tensor([[latent_end_id]], dtype=torch.long), persistent=False)
@@ -42,14 +44,15 @@ class CodiRecon(nn.Module):
         return cache, logits
 
     def _recon_decode(self, emb, *kv):
-        # dead-end forward; mask attention to the last latent_steps+2 cached positions (the
-        # latent block) so recon reads locals from the latent, not the prompt source.
+        # dead-end forward. local: attend only the latent block (last latent_steps+2 cached
+        # positions) so recon reads locals from the latent, not the prompt. full: attend all.
         c = DynamicCache()
         for k in range(len(kv) // 2):
             c.update(kv[2 * k], kv[2 * k + 1], k)
         past = kv[0].shape[-2]
-        mask = torch.zeros(1, past + emb.shape[1], dtype=torch.long, device=emb.device)
-        mask[:, past - (self.latent_steps + 2):] = 1
+        mask = torch.ones(1, past + emb.shape[1], dtype=torch.long, device=emb.device)
+        if self.recon_attn == "local":
+            mask[:, :past - (self.latent_steps + 2)] = 0
         return self.model(inputs_embeds=emb, past_key_values=c, attention_mask=mask, use_cache=True).logits[0]
 
     def _student(self, prompt_ids, trace_ids, spans, recon_targets):
@@ -133,6 +136,7 @@ def main():
     ap.add_argument("--latent_steps", type=int, default=1)
     ap.add_argument("--recon_w", type=float, default=1.0)  # locals-reconstruction weight
     ap.add_argument("--max_recon_len", type=int, default=128)
+    ap.add_argument("--recon_attn", choices=["local", "full"], default="local")
     ap.add_argument("--debug_recon_print", type=int, default=0)
     args = ap.parse_args()
 
@@ -144,14 +148,14 @@ def main():
     model = CodiRecon(base, latent_start_id=ids["<|latent_start|>"], latent_end_id=ids["<|latent_end|>"],
                       latent_steps=args.latent_steps, a=args.alpha, b=args.beta, g=args.gamma,
                       recon_w=args.recon_w, max_recon_len=args.max_recon_len,
-                      debug_recon_print=args.debug_recon_print)
+                      recon_attn=args.recon_attn, debug_recon_print=args.debug_recon_print)
     model.tok = tok
 
     ds = load_cache(args.cache_dir, max_len=args.max_seq_len, n_samples=args.n_samples)
     if any("recon_targets" not in e for e in ds):
         raise ValueError(f"{args.cache_dir} lacks recon_targets; rerun precompute.py --mode codi")
-    print(f"{len(ds)} codi examples, latent_steps={args.latent_steps}, "
-          f"recon_w={args.recon_w}, max_recon_len={args.max_recon_len}")
+    print(f"{len(ds)} codi examples, latent_steps={args.latent_steps}, recon_w={args.recon_w}, "
+          f"max_recon_len={args.max_recon_len}, recon_attn={args.recon_attn}")
     run_training(model, tok, ds, args, "codi_recon")
 
 

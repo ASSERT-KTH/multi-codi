@@ -23,7 +23,7 @@ def _prompt_str(code: str, input_str: str) -> str:
     return f"<|trace_context_start|>{ctx}<|frame_sep|><|call_sep|>{{}}<|action_sep|>def main():\n<|frame_sep|>"
 
 
-def _tokenize_trace(code, input_str, tokenizer, *, max_frames):
+def _tokenize_trace(code, input_str, tokenizer, *, max_frames, recon_full=False):
     """``(prompt_ids, trace_ids, spans, recon_targets)``; None to skip. Trace must
     terminate in RETURN/EXCEPTION and have >=1 LINE span. Span ``(i, j)``: ``trace_ids[i]``
     is ``<|line_sep|>``, ``j`` its ``<|action_sep|>``, ``trace_ids[i+1:j]`` the locals a
@@ -54,13 +54,13 @@ def _tokenize_trace(code, input_str, tokenizer, *, max_frames):
             i += 1
     if not spans:
         return None
-    recon_targets, prev = [], {}  # per-frame delta of full_locals vs previous frame (frame 0 = full)
+    recon_targets, prev = [], {}  # full_locals, or per-frame delta vs previous frame
     for f in frames:
         if f.event != TraceEvent.LINE:
             continue
         full = f.full_locals or {}
-        delta = {k: v for k, v in full.items() if prev.get(k) != v}
-        recon_targets.append(tokenizer.encode(json.dumps(delta, sort_keys=True), add_special_tokens=False))
+        tgt = full if recon_full else {k: v for k, v in full.items() if prev.get(k) != v}
+        recon_targets.append(tokenizer.encode(json.dumps(tgt, sort_keys=True), add_special_tokens=False))
         prev = full
     if len(recon_targets) != len(spans):
         return None
@@ -76,9 +76,9 @@ def build_example(code, input_str, tokenizer, *, max_frames=-1):
     return prompt_ids + trace_ids, [IGNORE_INDEX] * len(prompt_ids) + trace_ids
 
 
-def build_codi_example(code, input_str, tokenizer, *, max_frames=-1):
+def build_codi_example(code, input_str, tokenizer, *, max_frames=-1, recon_full=False):
     """Multi-span CODI example ``{prompt_ids, trace_ids, spans, recon_targets}``; None to skip."""
-    r = _tokenize_trace(code, input_str, tokenizer, max_frames=max_frames)
+    r = _tokenize_trace(code, input_str, tokenizer, max_frames=max_frames, recon_full=recon_full)
     if r is None:
         return None
     prompt_ids, trace_ids, spans, recon_targets = r

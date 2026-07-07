@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH -A naiss2026-3-261
-#SBATCH -C 4xA100fat
-#SBATCH --gpus-per-node=A100fat:4
+#SBATCH -A berzelius-2026-167
+#SBATCH --gpus 4
+#SBATCH -C fat
 #SBATCH -t 1-00:00:00
 #SBATCH -J codi
 #SBATCH -o codi_%j.log
@@ -11,9 +11,7 @@
 #   multi  : train_codi, full-layer + multi-anchor KD
 #   recon  : train_codi_recon, co-trained CODI + locals reconstruction
 #   single : train_codi_single, faithful single-block CODI
-# frozen/multi/recon run on 4x A100fat (header default). single needs A40 -> override at submit:
-#   sbatch -C 4xA40 --gpus-per-node=A40:4 --export=ALL,MODE=single,SIZE=1.5b codi.sbatch
-export PATH=/mimer/NOBACKUP/groups/assert-kth/siruil/conda_envs/CWM/bin:$PATH
+export PATH=/proj/assert-berzelius/users/x_sirli/conda/envs/CWM/bin:$PATH
 export HF_HUB_OFFLINE=1 HF_DATASETS_OFFLINE=1 PYTHONHASHSEED=0
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
@@ -51,6 +49,7 @@ case "$MODE" in
     MODE_ARGS=(
       --recon_w "${RECON_W:-0.1}"
       --max_recon_len "${MAX_RECON_LEN:-64}"
+      --recon_attn "${RECON_ATTN:-local}"
       --debug_recon_print "${DEBUG_RECON_PRINT:-0}"
     ) ;;
 

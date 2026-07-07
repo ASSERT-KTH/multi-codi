@@ -39,7 +39,9 @@ def main():
 
     rank = int(os.environ.get("RANK", 0))
     world = int(os.environ.get("WORLD_SIZE", 1))
-    local_rank = int(os.environ.get("LOCAL_RANK", 0))
+    # oversubscribe: allow >1 rank per GPU (latent decode is bs=1 and uses ~3.5GB/~39% util,
+    # so multiple shards/GPU fill it). rank stays unique for sharding; device wraps mod #GPUs.
+    local_rank = int(os.environ.get("LOCAL_RANK", 0)) % torch.cuda.device_count()
     torch.cuda.set_device(local_rank)  # ranks independent; merge_len_shards combines
 
     # Per-mode: load the model + a gen_batch(batch, caps) -> [(gen_ids, n_gen, n_fwd)] closure.

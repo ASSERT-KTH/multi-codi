@@ -35,16 +35,15 @@ def latent_block(body, head, emb, prj, ls_tok, le_tok, steps, cache, want_hidden
 
 
 def shared_teacher(model, full, labels, pos, kd_layers=None):
-    """Shared-weight teacher: detached per-layer hidden at `pos` + grad-ckpt CE."""
+    """Shared-weight teacher: one grad-ckpt forward; detached hidden@pos KD + CE."""
     pos = torch.as_tensor(pos, device=full.device)
-    with torch.no_grad():
-        hs = model(input_ids=full[None], use_cache=False, output_hidden_states=True).hidden_states
-        sel = hs[1:] if kd_layers is None else [hs[l] for l in kd_layers]
-        kd = [l[0, pos] for l in sel]
     model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
-    logits = model(input_ids=full[None], use_cache=False).logits
+    out = model(input_ids=full[None], use_cache=False, output_hidden_states=True)
     model.gradient_checkpointing_disable()
-    ce = F.cross_entropy(logits[0, :-1], labels[1:], ignore_index=IGNORE_INDEX)
+    hs = out.hidden_states
+    sel = hs[1:] if kd_layers is None else [hs[l] for l in kd_layers]
+    kd = [l[0, pos].detach() for l in sel]
+    ce = F.cross_entropy(out.logits[0, :-1], labels[1:], ignore_index=IGNORE_INDEX)
     return ce, kd
 
 

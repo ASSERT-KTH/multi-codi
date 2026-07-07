@@ -25,7 +25,7 @@ from datasets import Dataset
 from data.dataset import build_codi_example, build_example, rows_for_sources
 from data.tokens import add_trace_tokens
 
-TOK = MAX_FRAMES = MODE = TIMEOUT = None
+TOK = MAX_FRAMES = MODE = TIMEOUT = RECON_FULL = None
 
 
 def _alarm(*_):
@@ -36,14 +36,14 @@ def _no_net(*_a, **_k):
     raise OSError("network disabled")
 
 
-def _init(model, max_frames, mode, timeout):
+def _init(model, max_frames, mode, timeout, recon_full):
     import socket
     from transformers import AutoTokenizer
 
-    global TOK, MAX_FRAMES, MODE, TIMEOUT
+    global TOK, MAX_FRAMES, MODE, TIMEOUT, RECON_FULL
     TOK = AutoTokenizer.from_pretrained(model, use_fast=True)
     add_trace_tokens(TOK)
-    MAX_FRAMES, MODE, TIMEOUT = max_frames, mode, timeout
+    MAX_FRAMES, MODE, TIMEOUT, RECON_FULL = max_frames, mode, timeout, recon_full
     signal.signal(signal.SIGALRM, _alarm)
     # DNS (getaddrinfo) blocks in C and ignores SIGALRM, hanging the pool.
     socket.getaddrinfo = socket.create_connection = socket.socket = _no_net
@@ -53,7 +53,7 @@ def _work(row):
     signal.alarm(TIMEOUT)
     try:
         if MODE == "codi":
-            ex = build_codi_example(row["code"], row["input"], TOK, max_frames=MAX_FRAMES)
+            ex = build_codi_example(row["code"], row["input"], TOK, max_frames=MAX_FRAMES, recon_full=RECON_FULL)
         else:
             pair = build_example(row["code"], row["input"], TOK, max_frames=MAX_FRAMES)
             ex = None if pair is None else {"input_ids": pair[0], "labels": pair[1]}
@@ -85,6 +85,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", required=True)
     ap.add_argument("--mode", choices=["sft", "codi"], default="sft")
+    ap.add_argument("--recon_target", choices=["delta", "full"], default="delta")
     ap.add_argument("--sources", nargs="+", default=["mbpp", "humaneval", "pyx"])
     ap.add_argument("--n_samples", type=int, default=-1)
     ap.add_argument("--max_frames", type=int, default=1024)
@@ -108,7 +109,7 @@ def main():
 
     n = len(rows)
     print(f"{n} rows -> {args.out} ({args.mode}, workers={args.workers})", flush=True)
-    init_args = (args.model, args.max_frames, args.mode, args.timeout)
+    init_args = (args.model, args.max_frames, args.mode, args.timeout, args.recon_target == "full")
     if args.workers == 1:
         _init(*init_args)
         results = map(_work, rows)
@@ -133,7 +134,7 @@ def main():
 
     stats = _recon_stats(examples)
     if stats:
-        print("recon delta-locals lengths: "
+        print(f"recon {args.recon_target}-locals lengths: "
               f"mean={stats['recon_len_mean']:.1f} p90={stats['recon_len_p90']} "
               f"p99={stats['recon_len_p99']} max={stats['recon_len_max']}", flush=True)
     cfg = {**vars(args), "n_rows": n, "n_saved": len(examples), **stats}

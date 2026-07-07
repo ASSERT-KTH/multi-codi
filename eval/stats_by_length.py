@@ -8,7 +8,7 @@ import json
 
 from data.diag.dataset_dist import label, order
 
-EDGES = [0, 256, 512, 1024, 2048, 3072, 4096, 8192, 16384]  # canonical + long-tail extension
+EDGES = [0, 256, 512, 1024, 2048, 3072, 4096, 8192, 16384, 24576, 32768, 40960]  # canonical + 8K-wide long tail
 
 
 def bin_run(path):

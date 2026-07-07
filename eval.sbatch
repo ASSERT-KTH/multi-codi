@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH -A naiss2026-3-261
-#SBATCH -C 4xA100
-#SBATCH --gpus-per-node=A100:4
+#SBATCH -A berzelius-2026-167
+#SBATCH -C fat
+#SBATCH --gpus 4
 #SBATCH -t 12:00:00
 #SBATCH -J eval
 #SBATCH -o eval_%j.log
@@ -16,7 +16,7 @@
 #   long held-out -> DATASET=data/cache/codi_train MIN_LEN=3073   (leak boundary = training max_seq_len)
 # Submit e.g.:
 #   sbatch --export=ALL,MODE=codi,MODEL=<ckpt>,DATASET=data/cache/cruxeval_codi,OUT=results/crux_codi.json eval.sbatch
-export PATH=/mimer/NOBACKUP/groups/assert-kth/siruil/conda_envs/CWM/bin:$PATH
+export PATH=/proj/assert-berzelius/users/x_sirli/conda/envs/CWM/bin:$PATH
 export HF_HUB_OFFLINE=1 HF_DATASETS_OFFLINE=1 PYTHONHASHSEED=0
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 

@@ -1,0 +1,19 @@
+W0707 10:04:20.444000 150534 site-packages/torch/distributed/run.py:766] 
+W0707 10:04:20.444000 150534 site-packages/torch/distributed/run.py:766] *****************************************
+W0707 10:04:20.444000 150534 site-packages/torch/distributed/run.py:766] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W0707 10:04:20.444000 150534 site-packages/torch/distributed/run.py:766] *****************************************
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+  rank0 20/200  pass@1=0.8000
+  rank0 40/200  pass@1=0.7500
+  rank0 60/200  pass@1=0.7167
+  rank0 80/200  pass@1=0.7000
+  rank0 100/200  pass@1=0.6800
+  rank0 120/200  pass@1=0.6667
+  rank0 140/200  pass@1=0.6429
+  rank0 160/200  pass@1=0.6125
+  rank0 180/200  pass@1=0.5722
+  rank0 200/200  pass@1=0.5250
+merged 4 shards  pass@1=0.5138 valid_format=0.9237 (n=800) mean_fwd=415.0 mean_gen=349.0
