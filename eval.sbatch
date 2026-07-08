@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH -A berzelius-2026-167
 #SBATCH -C fat
-#SBATCH --gpus 4
+#SBATCH --gpus 2
 #SBATCH -t 12:00:00
 #SBATCH -J eval
 #SBATCH -o eval_%j.log
@@ -27,7 +27,9 @@ case "$MODE" in                             # per-mode defaults; unused flags ar
   *)        echo "unknown MODE=$MODE (want sft|codi|single)" >&2; exit 1 ;;
 esac
 
-torchrun --nproc_per_node="${NPROC:-4}" --master_port=$((20000 + RANDOM % 10000)) -m eval.eval_len \
+# default 2 GPUs x 4 ranks/GPU (NPROC=8): oversubscribe so bs=1 latent decode keeps
+# per-GPU power above Berzelius's 90W low-power-efficiency kill threshold.
+torchrun --nproc_per_node="${NPROC:-8}" --master_port=$((20000 + RANDOM % 10000)) -m eval.eval_len \
   --mode "$MODE" \
   --model "${MODEL:?set MODEL}" \
   --dataset "${DATASET:?set DATASET}" \

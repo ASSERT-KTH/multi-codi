@@ -48,6 +48,7 @@ def main():
     ap.add_argument("--batch_size", type=int, default=4)
     ap.add_argument("--grad_accum", type=int, default=4)
     ap.add_argument("--max_steps", type=int, default=-1)  # >0 for smoke
+    ap.add_argument("--save_steps", type=int, default=500)
     ap.add_argument("--sources", nargs="+", default=["mbpp", "humaneval", "pyx"])
     ap.add_argument("--cache_dir", default=None)  # load offline tokenized examples from precompute.py
     args = ap.parse_args()
@@ -83,7 +84,7 @@ def main():
         gradient_checkpointing_kwargs={"use_reentrant": False},
         logging_steps=5,
         save_strategy="steps",
-        save_steps=500,
+        save_steps=args.save_steps,
         save_total_limit=None,  # keep every checkpoint
         report_to=report_to,
     )
