@@ -18,9 +18,14 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 MODE="${MODE:?set MODE=frozen|multi|recon|single}"
 SIZE="${SIZE:-1.5b}"
 
+# Effective batch is pinned at 16 (the 4 GPU x bs1 x accum4 setting); accum absorbs the GPU count.
+GPUS="${GPUS:-${SLURM_GPUS:-4}}"
+BATCH="${BATCH:-1}"
+: "${ACCUM:=$(( 16 / (GPUS * BATCH) ))}"
+
 # Base SFT checkpoint by size (student/teacher init); output defaults to codi_<mode>_<size>.
 case "$SIZE" in
-  1.5b) : "${MODEL:=model_weights/sft1.5b_lr1e5_bs32/checkpoint-6936}" ;;
+  1.5b) : "${MODEL:=model_weights/sft1.5b_lr2e5_bs32/checkpoint-6936}" ;;
   3b)   : "${MODEL:=model_weights/sft3b_lr1e5_bs32/checkpoint-3000}" ;;
   *)    echo "unknown SIZE=$SIZE (want 1.5b|3b)" >&2; exit 1 ;;
 esac
@@ -46,6 +51,8 @@ case "$MODE" in
 
   recon)
     MODULE=train.train_codi_recon
+    # Only the *_full cache carries recon_targets; the plain codi_train cache predates them.
+    : "${CACHE_DIR:=data/cache/codi_train_full}"
     MODE_ARGS=(
       --recon_w "${RECON_W:-0.1}"
       --max_recon_len "${MAX_RECON_LEN:-64}"
@@ -62,7 +69,7 @@ case "$MODE" in
     exit 1 ;;
 esac
 
-torchrun --nproc_per_node=4 --master_port=$((20000 + RANDOM % 10000)) -m "$MODULE" \
+torchrun --nproc_per_node="$GPUS" --master_port=$((20000 + RANDOM % 10000)) -m "$MODULE" \
   --model "$MODEL" \
   --output_dir "$OUTPUT_DIR" \
   --max_seq_len 3072 \
@@ -76,6 +83,6 @@ torchrun --nproc_per_node=4 --master_port=$((20000 + RANDOM % 10000)) -m "$MODUL
   --alpha "${ALPHA:-1.0}" \
   --beta "${BETA:-1.0}" \
   --gamma "${GAMMA:-1.0}" \
-  --batch_size "${BATCH:-1}" \
-  --grad_accum "${ACCUM:-4}" \
+  --batch_size "$BATCH" \
+  --grad_accum "$ACCUM" \
   "${MODE_ARGS[@]}"
