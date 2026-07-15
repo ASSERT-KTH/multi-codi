@@ -1,0 +1,23 @@
+W0713 10:06:07.170000 577110 site-packages/torch/distributed/run.py:766] 
+W0713 10:06:07.170000 577110 site-packages/torch/distributed/run.py:766] *****************************************
+W0713 10:06:07.170000 577110 site-packages/torch/distributed/run.py:766] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W0713 10:06:07.170000 577110 site-packages/torch/distributed/run.py:766] *****************************************
+W0713 10:06:11.280000 579906 site-packages/torch/distributed/run.py:766] 
+W0713 10:06:11.280000 579906 site-packages/torch/distributed/run.py:766] *****************************************
+W0713 10:06:11.280000 579906 site-packages/torch/distributed/run.py:766] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W0713 10:06:11.280000 579906 site-packages/torch/distributed/run.py:766] *****************************************
+[2026-07-13T10:06:41.201] error: *** JOB 17062570 ON node063 CANCELLED AT 2026-07-13T10:06:41 DUE to SIGNAL Terminated ***
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+  rank0 20/100  pass@1=0.7500
+  rank0 40/100  pass@1=0.7000
+  rank0 60/100  pass@1=0.5667
+  rank0 80/100  pass@1=0.4625
+  rank0 100/100  pass@1=0.4000
+merged 8 shards  pass@1=0.3825 valid_format=0.9187 (n=800) mean_fwd=415.4 mean_gen=349.7
