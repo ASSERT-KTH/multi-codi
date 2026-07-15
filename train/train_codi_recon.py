@@ -1,7 +1,7 @@
 """Per-frame CODI + locals reconstruction. AR readout decodes each frame's locals from
 the latents. Two independent knobs: --recon_attn {local,full} (local masks attention to
-the latent block so it can't copy the prompt; full attends everything) and the recon
-target baked into the cache (delta vs full state, set at precompute --recon_target).
+the latent block so it can't copy the prompt; full attends everything) and --recon_target
+{diff,full} (which cached locals string the latent reconstructs: diff vs full state).
 L = a*Lt + b*Ls + g*Lkd + recon_w*Lrec."""
 
 import argparse
@@ -14,7 +14,7 @@ from torch.utils.checkpoint import checkpoint
 from transformers import AutoModelForCausalLM, AutoTokenizer, DynamicCache
 
 from train.codi_core import add_common_args, build_projector, latent_block, run_training, shared_teacher
-from data.cache import load_cache
+from data.precompute_loader import load_cache
 from data.dataset import IGNORE_INDEX
 from data.tokens import add_trace_tokens, token_ids
 
@@ -22,13 +22,13 @@ from data.tokens import add_trace_tokens, token_ids
 class CodiRecon(nn.Module):
     def __init__(self, base, *, latent_start_id, latent_end_id, latent_steps,
                  a=1.0, b=1.0, g=1.0, recon_w=1.0, max_recon_len=128,
-                 recon_attn="local", debug_recon_print=0):
+                 recon_attn="local", recon_target="diff", debug_recon_print=0):
         super().__init__()
         self.model = base
         ref = base.get_input_embeddings().weight
         self.prj = build_projector(base.config.hidden_size, ref.device, ref.dtype)
         self.latent_steps, self.a, self.b, self.g, self.recon_w = latent_steps, a, b, g, recon_w
-        self.max_recon_len, self.recon_attn = max_recon_len, recon_attn
+        self.max_recon_len, self.recon_attn, self.recon_target = max_recon_len, recon_attn, recon_target
         self.debug_recon_print, self._debug_seen = debug_recon_print, 0
         self.register_buffer("_ls_tok", torch.tensor([[latent_start_id]], dtype=torch.long), persistent=False)
         self.register_buffer("_le_tok", torch.tensor([[latent_end_id]], dtype=torch.long), persistent=False)
@@ -56,7 +56,7 @@ class CodiRecon(nn.Module):
         return self.model(inputs_embeds=emb, past_key_values=c, attention_mask=mask, use_cache=True).logits[0]
 
     def _student(self, prompt_ids, trace_ids, spans, recon_targets):
-        # Text follows the diff trace; recon_targets are per-frame delta-locals.
+        # Text follows the diff trace; recon_targets[k] is frame k's diff/full locals target.
         segs, prev, kd = [], 0, False
         for k, (i, j) in enumerate(spans):
             segs.append(("text", trace_ids[prev:i + 1], kd))
@@ -108,10 +108,11 @@ class CodiRecon(nn.Module):
         for ex in examples:
             prompt = torch.tensor(ex["prompt_ids"], device=dev)
             trace = torch.tensor(ex["trace_ids"], device=dev)
-            recon = [torch.tensor(x, device=dev) for x in ex["recon_targets"]]
+            key = "full_locals_ids" if self.recon_target == "full" else "locals_ids"
+            recon = [torch.tensor(x, device=dev) for x in ex[key]]
             spans = ex["spans"]
             if len(recon) != len(spans):
-                raise ValueError(f"recon_targets/spans mismatch: {len(recon)} vs {len(spans)}")
+                raise ValueError(f"{key}/spans mismatch: {len(recon)} vs {len(spans)}")
             full = torch.cat([prompt, trace])
             labels = torch.cat([full.new_full((len(prompt),), IGNORE_INDEX), trace])
             kd_pos = [len(prompt) + j for _, j in spans]
@@ -137,6 +138,7 @@ def main():
     ap.add_argument("--recon_w", type=float, default=1.0)  # locals-reconstruction weight
     ap.add_argument("--max_recon_len", type=int, default=128)
     ap.add_argument("--recon_attn", choices=["local", "full"], default="local")
+    ap.add_argument("--recon_target", choices=["diff", "full"], default="diff")
     ap.add_argument("--debug_recon_print", type=int, default=0)
     args = ap.parse_args()
 
@@ -148,14 +150,16 @@ def main():
     model = CodiRecon(base, latent_start_id=ids["<|latent_start|>"], latent_end_id=ids["<|latent_end|>"],
                       latent_steps=args.latent_steps, a=args.alpha, b=args.beta, g=args.gamma,
                       recon_w=args.recon_w, max_recon_len=args.max_recon_len,
-                      recon_attn=args.recon_attn, debug_recon_print=args.debug_recon_print)
+                      recon_attn=args.recon_attn, recon_target=args.recon_target,
+                      debug_recon_print=args.debug_recon_print)
     model.tok = tok
 
     ds = load_cache(args.cache_dir, max_len=args.max_seq_len, n_samples=args.n_samples)
-    if any("recon_targets" not in e for e in ds):
-        raise ValueError(f"{args.cache_dir} lacks recon_targets; rerun precompute.py --mode codi")
+    key = "full_locals_ids" if args.recon_target == "full" else "locals_ids"
+    if any(key not in e for e in ds):
+        raise ValueError(f"{args.cache_dir} lacks {key}; rerun `python -m data.precompute --mode codi`")
     print(f"{len(ds)} codi examples, latent_steps={args.latent_steps}, recon_w={args.recon_w}, "
-          f"max_recon_len={args.max_recon_len}, recon_attn={args.recon_attn}")
+          f"max_recon_len={args.max_recon_len}, recon_attn={args.recon_attn}, recon_target={args.recon_target}")
     run_training(model, tok, ds, args, "codi_recon")
 
 

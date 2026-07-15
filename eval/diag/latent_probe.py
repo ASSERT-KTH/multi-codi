@@ -12,9 +12,9 @@ import json
 import torch
 import torch.nn.functional as F
 
-from data.cache import _len
-from data.dataset import build_codi_example
-from data.sources import load_cruxeval
+from data.precompute_loader import _len
+from data.dataset import build_trace_record
+from data.dataset import load_dataset
 from eval.codi_infer import load_codi
 from data.tokens import token_ids
 
@@ -95,10 +95,10 @@ def main():
     asep_id = token_ids(tok)["<|action_sep|>"]
 
     all_recs, used = [], 0
-    for r in load_cruxeval():
+    for r in load_dataset("cruxeval"):
         if used >= args.n:
             break
-        ex = build_codi_example(r["code"], r["input"], tok)
+        ex = build_trace_record(r["code"], r["input"], tok)
         if ex is None or _len(ex) > args.max_seq_len:
             continue
         all_recs += probe_example(model, ex["prompt_ids"], ex["trace_ids"], ex["spans"], asep_id, args.topk)

@@ -16,7 +16,7 @@ import torch
 import torch.distributed as dist
 
 from data.dataset import _prompt_str
-from data.sources import load_cruxeval
+from data.dataset import load_dataset
 from eval.codi_infer import load_codi
 from eval.scoring import check_correct, extract_answer_trace_full
 from data.tokens import token_ids
@@ -45,7 +45,7 @@ def main():
     tok.padding_side = "left"
     eot_id = token_ids(tok)["<|end_of_text|>"]
 
-    rows = load_cruxeval()
+    rows = load_dataset("cruxeval")
     if args.n_samples > 0:
         rows = rows[: args.n_samples]
     n = len(rows)

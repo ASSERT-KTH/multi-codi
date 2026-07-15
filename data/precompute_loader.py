@@ -1,4 +1,4 @@
-"""Load + length-filter a precompute.py cache. Length is token count:
+"""Load + length-filter the dataset written by precompute.py. Length is token count:
 sft=input_ids, codi=prompt_ids+trace_ids. Shared by training and eval."""
 
 from datasets import load_from_disk

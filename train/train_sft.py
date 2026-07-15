@@ -1,7 +1,7 @@
 """Stage 1: explicit full-trace SFT = baseline = CODI teacher.
 
 Teach a non-CWM base (Qwen2.5-Coder) to emit CWM-format execution traces.
-Plain next-token CE; labels mask the prompt (done in data.dataset.build_example).
+Plain next-token CE; labels mask the prompt in this script.
 """
 
 import argparse
@@ -16,10 +16,10 @@ from transformers import (
 )
 from transformers.trainer_utils import get_last_checkpoint
 
-from data.cache import load_cache
+from data.precompute_loader import load_cache
 from data.dataset import IGNORE_INDEX
 from data.tokens import add_trace_tokens, resize_and_init
-from wb import wandb_init
+from .wb import wandb_init
 
 
 def collate(batch, pad_id):
@@ -35,6 +35,12 @@ def collate(batch, pad_id):
         "attention_mask": torch.tensor(attn),
         "labels": torch.tensor(labels),
     }
+
+
+def sft_pair(example):
+    prompt_ids = example["prompt_ids"]
+    trace_ids = example["trace_ids"]
+    return prompt_ids + trace_ids, [IGNORE_INDEX] * len(prompt_ids) + trace_ids
 
 
 def main():
@@ -61,7 +67,7 @@ def main():
     n_added = add_trace_tokens(tok)
     resize_and_init(model, tok, n_added)
 
-    ds = [(e["input_ids"], e["labels"])
+    ds = [sft_pair(e)
           for e in load_cache(args.cache_dir, max_len=args.max_seq_len, n_samples=args.n_samples)]
     print(f"{len(ds)} trace examples")
 

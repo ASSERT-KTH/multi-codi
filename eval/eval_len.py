@@ -15,7 +15,7 @@ import os
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from data.cache import _len, load_cache
+from data.precompute_loader import _len, load_cache
 from data.dataset import _prompt_str
 from data.tokens import add_trace_tokens, token_ids
 from eval.codi_infer import gen_latent, gen_single, load_codi, load_codi_single

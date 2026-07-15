@@ -9,7 +9,7 @@ import argparse
 import json
 
 from data.ground_truth import ground_truth_trace
-from data.sources import load_cruxeval
+from data.dataset import load_dataset
 from data.trace_format import TraceEvent
 
 EDGES = {"nvars": [1, 2, 3, 4, 5, 6], "locals_len": [0, 16, 24, 32, 48, 64]}
@@ -49,7 +49,7 @@ def main():
         from transformers import AutoTokenizer
         tok = AutoTokenizer.from_pretrained(args.model, use_fast=True)
     res = json.load(open(args.results))["results"]
-    by_id = {str(r["id"]): r for r in load_cruxeval()}
+    by_id = {str(r["id"]): r for r in load_dataset("cruxeval")}
 
     buckets, missing = {}, 0
     for r in res:

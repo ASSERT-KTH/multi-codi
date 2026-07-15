@@ -11,6 +11,7 @@ prompt. Not a bit-exact replica of Meta's internal tracer (see README.md).
 
 from __future__ import annotations
 
+import json
 import linecache
 import sys
 from typing import Any
@@ -77,10 +78,14 @@ def ground_truth_trace(
             return None
         if event == "call":
             loc, full = diff_locals(frame)
-            frames.append(TraceFrame(event=TraceEvent.CALL, source=source(frame), locals=loc, full_locals=full))
+            frames.append(TraceFrame(event=TraceEvent.CALL, source=source(frame), locals=loc, full_locals=full,
+                                     locals_str=json.dumps(loc, sort_keys=True),
+                                     full_locals_str=json.dumps(full, sort_keys=True)))
         elif event == "line":
             loc, full = diff_locals(frame)
-            frames.append(TraceFrame(event=TraceEvent.LINE, source=source(frame), locals=loc, full_locals=full))
+            frames.append(TraceFrame(event=TraceEvent.LINE, source=source(frame), locals=loc, full_locals=full,
+                                     locals_str=json.dumps(loc, sort_keys=True),
+                                     full_locals_str=json.dumps(full, sort_keys=True)))
         elif event == "return":
             frames.append(TraceFrame(event=TraceEvent.RETURN, source=source(frame), arg=render_value(arg)))
         elif event == "exception":

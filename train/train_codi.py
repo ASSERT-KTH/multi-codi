@@ -18,7 +18,7 @@ import torch.nn.functional as F
 from transformers import AutoModelForCausalLM, AutoTokenizer, DynamicCache
 
 from train.codi_core import add_common_args, build_projector, latent_block, run_training, shared_teacher
-from data.cache import load_cache
+from data.precompute_loader import load_cache
 from data.dataset import IGNORE_INDEX
 from data.tokens import add_trace_tokens, token_ids
 

@@ -1,35 +1,28 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-"""
-Shared CWM execution-trace representation and parsing.
+"""Shared CWM execution-trace representation: parse and render.
 
-CWM predicts an execution trace as a sequence of *frames*, each consisting of an
-*observation* (the local-variable state) and an *action* (the executed source
-line). The on-the-wire format (see PROMPTING_GUIDE.md and demos/cwmdbg.py) is:
+A trace is a sequence of *frames*, each an observation (locals) + action
+(source line). Wire format (see PROMPTING_GUIDE.md, demos/cwmdbg.py):
 
     <|call_sep|>$LOCALS<|action_sep|>$SOURCE<|frame_sep|>
     <|line_sep|>$LOCALS<|action_sep|>$SOURCE<|frame_sep|>
     <|return_sep|><|action_sep|>$SOURCE<|arg_sep|>$VALUE<|frame_sep|>
     <|exception_sep|><|action_sep|>$SOURCE<|arg_sep|>$VALUE<|frame_sep|>
 
-`$LOCALS` is a JSON object mapping variable names to *string* values; each value
-is the JSON encoding of the underlying Python value (e.g. `"5"`, `"\"abc\""`,
-`"[1, 2]"`). Locals use a diff-based representation: a variable whose value is
-unchanged since the previous frame in the same scope is rendered as the
-placeholder string `".."`. `$VALUE` (return/exception frames) is the JSON
-encoding of the returned/raised value, stored as a JSON string.
-
-This module is GPU-free and import-light so it can be unit-tested directly.
+$LOCALS is a JSON object of name -> JSON-string value (e.g. "5", "\"abc\"",
+"[1, 2]"); a value unchanged since the previous same-scope frame renders as
+"..". $VALUE is the JSON-encoded return/raised value. GPU-free and import-light
+for direct unit testing.
 """
 
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 
-# Literal piece strings as they appear when a generation is decoded with
-# cut_at_stop_tokens=False (matches CWMInstructTokenizer.*_ID constants).
+# Wire-format pieces (matches CWMInstructTokenizer.*_ID constants).
 CALL_SEP = "<|call_sep|>"
 LINE_SEP = "<|line_sep|>"
 RETURN_SEP = "<|return_sep|>"
@@ -63,11 +56,10 @@ _EVENT_TO_TOKEN: dict[TraceEvent, str] = {v: k for k, v in _EVENT_TOKENS.items()
 class TraceFrame:
     """A single execution-trace frame.
 
-    `locals_str` is the raw `$LOCALS` text exactly as it appears between the
-    event token and `<|action_sep|>` (empty string for return/exception
-    frames). `locals` is its parsed form (a dict of name -> JSON-string-value),
-    or None if it failed to parse as a JSON object. `source` is the action line
-    with the START_OF_TRACE marker and trailing newline stripped.
+    ``locals`` is the parsed diff-locals, or None if malformed; ``full_locals``
+    the non-diff snapshot. ``locals_str`` / ``full_locals_str`` are the JSON
+    strings of each (the diff/full reconstruction targets), filled on the
+    generation side. ``source`` has the START_OF_TRACE marker stripped.
     """
 
     event: TraceEvent
@@ -75,12 +67,9 @@ class TraceFrame:
     locals_str: str = ""
     locals: dict[str, str] | None = None
     full_locals: dict[str, str] | None = None
+    full_locals_str: str = ""
     arg: str | None = None
     malformed: bool = False
-    # Token counts (filled when a tokenizer is available); used for the
-    # "Avg State/Action Length (Token)" statistics rows of Table 9.
-    state_tokens: int = 0
-    action_tokens: int = 0
 
     @property
     def has_locals(self) -> bool:
@@ -103,19 +92,17 @@ def parse_locals(locals_str: str) -> dict[str, str] | None:
         return None
     if not isinstance(obj, dict):
         return None
-    # Values are always JSON strings; coerce defensively.
+    # Coerce defensively: values should already be JSON strings.
     return {str(k): v if isinstance(v, str) else json.dumps(v) for k, v in obj.items()}
 
 
 def parse_generated_trace(generation: str) -> tuple[list[TraceFrame], bool]:
-    """Parse a full-trace generation string into frames.
+    """Parse a generation string into ``(frames, well_formed)``.
 
-    Returns (frames, well_formed). `well_formed` is True when every frame had a
-    leading event token and an `<|action_sep|>` (and an `<|arg_sep|>` for
-    return/exception frames) and the generation contained no leftover garbage
-    between the last frame and end-of-text. This drives the "Valid Trace Format"
-    metric. Individual frames are still returned even when malformed so that the
-    other metrics can be computed over whatever parsed cleanly.
+    ``well_formed`` (the "Valid Trace Format" metric) is True iff every frame had
+    its event token, an ``<|action_sep|>`` (and an ``<|arg_sep|>`` for
+    return/exception), with no leftover garbage before end-of-text. Malformed
+    frames are still returned so other metrics can use whatever parsed cleanly.
     """
     # Everything after end-of-text is irrelevant.
     if END_OF_TEXT in generation:
@@ -124,10 +111,9 @@ def parse_generated_trace(generation: str) -> tuple[list[TraceFrame], bool]:
     frames: list[TraceFrame] = []
     well_formed = True
     segments = generation.split(FRAME_SEP)
-    # The final segment is the text after the last frame_sep; for a clean trace
-    # it should be empty (the model emitted frame_sep then end_of_text).
+    # Text after the last frame_sep should be empty for a clean trace.
     trailing = segments.pop() if segments else ""
-    if trailing.strip() not in ("",):
+    if trailing.strip() != "":
         well_formed = False
 
     for seg in segments:
@@ -159,13 +145,9 @@ def _parse_segment(seg: str) -> tuple[TraceFrame | None, bool]:
     if event is None:
         return None, False
 
-    ok = True
     if event in (TraceEvent.CALL, TraceEvent.LINE):
         if ACTION_SEP not in seg:
-            return (
-                TraceFrame(event=event, source="", malformed=True),
-                False,
-            )
+            return TraceFrame(event=event, source="", malformed=True), False
         locals_str, source = seg.split(ACTION_SEP, 1)
         parsed = parse_locals(locals_str)
         return (
@@ -176,31 +158,28 @@ def _parse_segment(seg: str) -> tuple[TraceFrame | None, bool]:
                 locals=parsed,
                 malformed=parsed is None,
             ),
-            ok,
+            True,
         )
 
     # RETURN / EXCEPTION
     if ACTION_SEP not in seg:
         return TraceFrame(event=event, source="", malformed=True), False
     seg = seg.split(ACTION_SEP, 1)[1]
-    if ARG_SEP in seg:
+    if ARG_SEP in seg:  # ok only when the arg separator is present
         source, arg = seg.split(ARG_SEP, 1)
         arg = _parse_arg(arg)
     else:
         source, arg = seg, None
-        ok = False
     return (
         TraceFrame(event=event, source=normalize_source(source), arg=arg),
-        ok,
+        ARG_SEP in seg,
     )
 
 
 def render_frames_to_generation(frames: list[TraceFrame]) -> str:
-    """Render frames back to the on-the-wire generation string.
+    """Render frames back to the wire string; inverse of ``parse_generated_trace``.
 
-    Inverse of ``parse_generated_trace`` for well-formed frames. Used by tests
-    (a ground-truth trace rendered this way must round-trip to a perfect score)
-    and to materialize a reference trace string for inspection.
+    A ground-truth trace rendered this way must round-trip to a perfect score.
     """
     out: list[str] = []
     for f in frames:
@@ -222,8 +201,7 @@ def _parse_arg(arg_str: str) -> str | None:
     if arg_str == "":
         return None
     try:
-        # The frame stores json.dumps(value_string); unwrap one level so `arg`
-        # is the source-literal value string (e.g. '"x9ja"' or '17').
+        # Frame stores json.dumps(value_string); unwrap one level (e.g. -> '"x9ja"', '17').
         loaded = json.loads(arg_str)
         return loaded if isinstance(loaded, str) else arg_str
     except json.JSONDecodeError:

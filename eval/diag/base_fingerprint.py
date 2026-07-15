@@ -14,7 +14,7 @@ import torch
 import torch.nn.functional as F
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from data.cache import load_cache
+from data.precompute_loader import load_cache
 from data.dataset import IGNORE_INDEX
 from data.tokens import add_trace_tokens
 

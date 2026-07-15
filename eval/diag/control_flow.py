@@ -10,7 +10,7 @@ import argparse
 import json
 
 from data.ground_truth import ground_truth_trace
-from data.sources import load_cruxeval
+from data.dataset import load_dataset
 from data.trace_format import parse_generated_trace
 
 
@@ -33,7 +33,7 @@ def main():
     args = ap.parse_args()
 
     res = json.load(open(args.results))["results"]
-    by_id = {str(r["id"]): r for r in load_cruxeval()}
+    by_id = {str(r["id"]): r for r in load_dataset("cruxeval")}
 
     n = skipped = cm_c = cm_w = dv_c = dv_w = 0
     fracs = []

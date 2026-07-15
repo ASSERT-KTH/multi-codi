@@ -15,7 +15,8 @@ import torch.nn.functional as F
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from train.codi_core import add_common_args, build_projector, latent_block, run_training, shared_teacher
-from data.dataset import IGNORE_INDEX, build_codi_single_dataset
+from data.dataset import IGNORE_INDEX
+from data.precompute_loader import load_cache
 from data.tokens import add_trace_tokens, token_ids
 
 
@@ -83,7 +84,14 @@ def main():
     model = CodiSingle(base, latent_start_id=ids["<|latent_start|>"], latent_end_id=ids["<|latent_end|>"],
                        latent_steps=args.latent_steps, a=args.alpha, b=args.beta, g=args.gamma)
 
-    ds = build_codi_single_dataset(tok, args.cache_dir, max_len=args.max_seq_len, n_samples=args.n_samples)
+    rsep = tok.convert_tokens_to_ids("<|return_sep|>")
+    ds = []
+    for e in load_cache(args.cache_dir, max_len=args.max_seq_len, n_samples=args.n_samples):
+        trace_ids = e["trace_ids"]
+        idx = [i for i, x in enumerate(trace_ids) if x == rsep]
+        if not idx or idx[-1] == 0:
+            continue
+        ds.append({"prompt_ids": e["prompt_ids"], "reasoning_ids": trace_ids[:idx[-1]], "answer_ids": trace_ids[idx[-1]:]})
     print(f"{len(ds)} codi-single examples, latent_steps={args.latent_steps}")
     run_training(model, tok, ds, args, "codi_single")
 

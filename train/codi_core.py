@@ -11,7 +11,7 @@ from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import WEIGHTS_NAME
 
 from data.dataset import IGNORE_INDEX
-from wb import wandb_init
+from .wb import wandb_init
 
 
 def build_projector(h, device, dtype):

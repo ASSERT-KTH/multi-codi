@@ -13,7 +13,7 @@ import argparse
 import json
 
 from data.ground_truth import ground_truth_trace
-from data.sources import load_cruxeval
+from data.dataset import load_dataset
 from data.trace_format import TraceEvent
 
 DEFAULT_EDGES = [1, 2, 3, 4, 5, 7, 11, 21]  # right-open bins + [last, inf)
@@ -46,7 +46,7 @@ def main():
 
     edges = sorted(int(x) for x in args.edges.split(","))
     res = json.load(open(args.results))["results"]
-    by_id = {str(r["id"]): r for r in load_cruxeval()}
+    by_id = {str(r["id"]): r for r in load_dataset("cruxeval")}
 
     # bucket -> [n, n_correct, n_fmt]; plus a special "untraceable" bucket
     buckets: dict[str, list[int]] = {}
