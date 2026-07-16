@@ -19,7 +19,7 @@ from .trace_format import (
 
 IGNORE_INDEX = -100
 
-_LOCAL = {"mbpp": "MBPP", "humaneval": "HumanEval", "pyx": "PyX"}  # name -> folder, data in ./data
+_LOCAL = {"mbpp": "MBPP", "humaneval": "HumanEval", "pyx": "PyX", "ds256k": "Ds256k"}  # name -> folder, data in ./data
 
 
 def load_dataset(name: str) -> list[dict]:
