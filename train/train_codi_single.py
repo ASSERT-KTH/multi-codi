@@ -12,9 +12,9 @@ import argparse
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
 
-from train.codi_core import add_common_args, build_projector, latent_block, run_training, shared_teacher
+from train.codi_core import add_common_args, build_projector, latent_block, run_training, shared_teacher, sliding_window
 from data.dataset import IGNORE_INDEX
 from data.precompute_loader import load_cache
 from data.tokens import add_trace_tokens, token_ids
@@ -79,7 +79,8 @@ def main():
     tok = AutoTokenizer.from_pretrained(args.model, use_fast=True)
     add_trace_tokens(tok)  # idempotent
     ids = token_ids(tok)
-    base = AutoModelForCausalLM.from_pretrained(args.model, torch_dtype=torch.bfloat16)
+    cfg = sliding_window(AutoConfig.from_pretrained(args.model), args.sliding_window)
+    base = AutoModelForCausalLM.from_pretrained(args.model, config=cfg, torch_dtype=torch.bfloat16, attn_implementation=args.attn_impl)
     base.config.use_cache = True
     model = CodiSingle(base, latent_start_id=ids["<|latent_start|>"], latent_end_id=ids["<|latent_end|>"],
                        latent_steps=args.latent_steps, a=args.alpha, b=args.beta, g=args.gamma)

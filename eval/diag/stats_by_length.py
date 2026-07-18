@@ -1,12 +1,12 @@
 """Length-binned SFT-vs-CODI comparison over eval_len.py --out JSONs. Run from codi_trace/:
-    python -m eval.stats_by_length --results sft15.json codi15.json --labels sft1.5b codi1.5b
+    python -m eval.diag.stats_by_length --results sft15.json codi15.json --labels sft1.5b codi1.5b
 Over-budget (n_fwd >= max_new) rows are truncated -> invalid -> wrong.
 """
 
 import argparse
 import json
 
-from data.diag.dataset_dist import label, order
+from eval.diag.binstats import bin_label, order
 
 EDGES = [0, 256, 512, 1024, 2048, 3072, 4096, 8192, 16384, 24576, 32768, 40960]  # canonical + 8K-wide long tail
 
@@ -16,7 +16,7 @@ def bin_run(path):
     default_cap = d.get("max_new_tokens", 1 << 60)
     bins = {}
     for r in d["results"]:
-        b = bins.setdefault(label(EDGES, r["trace_len"]),
+        b = bins.setdefault(bin_label(EDGES, r["trace_len"]),
                             {"n": 0, "correct": 0, "valid": 0, "fwd": 0, "gen": 0, "ratio": 0.0, "trunc": 0})
         in_budget = r.get("n_fwd", 0) < r.get("max_new", default_cap)
         b["n"] += 1

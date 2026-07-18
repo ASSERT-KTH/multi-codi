@@ -14,6 +14,13 @@ from data.dataset import IGNORE_INDEX
 from .wb import wandb_init
 
 
+def sliding_window(cfg, w):
+    if w and w > 0:
+        cfg.use_sliding_window, cfg.sliding_window, cfg.max_window_layers = True, w, 0
+        cfg.layer_types = ["sliding_attention"] * cfg.num_hidden_layers
+    return cfg
+
+
 def build_projector(h, device, dtype):
     return nn.Sequential(
         nn.Linear(h, h, bias=False), nn.GELU(),
@@ -51,10 +58,6 @@ class CodiTrainer(Trainer):
     _SUB = ("teacher_loss", "student_loss", "kd_loss", "recon_loss", "recon_trunc")
 
     def compute_loss(self, model, inputs, return_outputs=False, **kw):
-        core = model.module if hasattr(model, "module") else model
-        if hasattr(core, "set_step"):
-            core.set_step(self.state.global_step, self.state.max_steps)
-        self._ss = core.ss_p if getattr(core, "ss_prob", 0) else None
         out = model(inputs["examples"])
         self._sub = {k: out[k] for k in self._SUB if k in out}
         return (out["loss"], out) if return_outputs else out["loss"]
@@ -62,8 +65,6 @@ class CodiTrainer(Trainer):
     def log(self, logs, *a, **k):
         for key, v in getattr(self, "_sub", {}).items():
             logs[key] = v.item()
-        if getattr(self, "_ss", None) is not None:
-            logs["ss_p"] = self._ss
         super().log(logs, *a, **k)
 
     def _save(self, output_dir=None, state_dict=None):
@@ -79,11 +80,9 @@ class CodiTrainer(Trainer):
 def add_common_args(ap):
     ap.add_argument("--model", required=True)
     ap.add_argument("--output_dir", required=True)
-    ap.add_argument("--sources", nargs="+", default=["mbpp", "humaneval", "pyx"])
     ap.add_argument("--cache_dir", default="data/cache/codi_train")
     ap.add_argument("--n_samples", type=int, default=-1)
     ap.add_argument("--max_seq_len", type=int, default=4096)
-    ap.add_argument("--max_frames", type=int, default=-1)
     ap.add_argument("--epochs", type=float, default=10.0)
     ap.add_argument("--lr", type=float, default=1e-5)
     ap.add_argument("--batch_size", type=int, default=1)
@@ -94,6 +93,8 @@ def add_common_args(ap):
     ap.add_argument("--alpha", type=float, default=1.0)
     ap.add_argument("--beta", type=float, default=1.0)
     ap.add_argument("--gamma", type=float, default=1.0)
+    ap.add_argument("--sliding_window", type=int, default=0)  # 0=off; >0 caps attention+KV to last W (needs flash-attn to save mem)
+    ap.add_argument("--attn_impl", default="flash_attention_2")  # A100 compute nodes; sdpa fallback for non-Ampere
     return ap
 
 
@@ -109,7 +110,7 @@ def run_training(model, tok, ds, args, run_name):
         warmup_ratio=0.03,
         weight_decay=0.1,
         max_grad_norm=1.0,
-        bf16=True,
+        bf16=args.attn_impl != "flash_attention_2",  # FA2's q/k break under autocast -> native bf16 (model already bf16)
         optim=args.optim,
         ddp_find_unused_parameters=False,
         logging_steps=5,

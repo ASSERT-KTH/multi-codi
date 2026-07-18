@@ -1,5 +1,5 @@
 """Token-kind breakdown of generated traces: control seps / locals (state) / action (source) / value.
-Run: python -m eval.stats_token_kinds --results <json> --model <ckpt-for-tokenizer>"""
+Run: python -m eval.diag.stats_token_kinds --results <json> --model <ckpt-for-tokenizer>"""
 import argparse
 import json
 

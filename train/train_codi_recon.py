@@ -11,9 +11,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.checkpoint import checkpoint
-from transformers import AutoModelForCausalLM, AutoTokenizer, DynamicCache
+from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer, DynamicCache
 
-from train.codi_core import add_common_args, build_projector, latent_block, run_training, shared_teacher
+from train.codi_core import add_common_args, build_projector, latent_block, run_training, shared_teacher, sliding_window
 from data.precompute_loader import load_cache
 from data.dataset import IGNORE_INDEX
 from data.tokens import add_trace_tokens, token_ids
@@ -55,49 +55,53 @@ class CodiRecon(nn.Module):
             mask[:, :past - (self.latent_steps + 2)] = 0
         return self.model(inputs_embeds=emb, past_key_values=c, attention_mask=mask, use_cache=True).logits[0]
 
+    def _recon_frame(self, cache, ids):
+        """AR-decode one frame's locals from the latent block just written to `cache`."""
+        kv = [t for ly in cache.layers for t in (ly.keys, ly.values)]
+        tgt = ids[:min(ids.numel(), self.max_recon_len)]
+        emb = torch.cat([self._emb(self._le_tok), self._emb(tgt[None])], 1)  # latent_end BOS + targets
+        logits = checkpoint(self._recon_decode, emb, *kv, use_reentrant=False)[:-1]
+        if self._debug_seen < self.debug_recon_print and int(os.environ.get("RANK", 0)) == 0:
+            t = getattr(self, "tok", None)
+            msg = f" tgt={t.decode(tgt[:80].tolist())!r} pred={t.decode(logits.argmax(-1)[:80].tolist())!r}" if t else ""
+            print(f"[recon-debug] frame={self._debug_seen} len={ids.numel()} used={tgt.numel()}{msg}", flush=True)
+            self._debug_seen += 1
+        return logits, tgt
+
     def _student(self, prompt_ids, trace_ids, spans, recon_targets):
         # Text follows the diff trace; recon_targets[k] is frame k's diff/full locals target.
         segs, prev, kd = [], 0, False
         for k, (i, j) in enumerate(spans):
-            segs.append(("text", trace_ids[prev:i + 1], kd))
-            segs.append(("latent", recon_targets[k], False))
+            segs += [("text", trace_ids[prev:i + 1], kd), ("latent", recon_targets[k], False)]
             prev, kd = j, True
         segs.append(("text", trace_ids[prev:], kd))
 
         out = self.model(inputs_embeds=self._emb(prompt_ids[None]), use_cache=True)
         cache, prev_logits = out.past_key_values, out.logits[:, -1]
-        ce_logits, ce_targets, kd_vecs, rec_logits, rec_targets = [], [], [], [], []
-        trunc = total = 0
+        ce, kd_vecs, rec, trunc, total = [], [], [], 0, 0
         for kind, ids, kd in segs:
             if kind == "latent":
                 cache, prev_logits = self._latent_block(cache)
                 if self.recon_w and ids.numel():
-                    kv = [t for ly in cache.layers for t in (ly.keys, ly.values)]
-                    n = min(ids.numel(), self.max_recon_len)
-                    trunc += int(ids.numel() > n); total += 1
-                    tgt = ids[:n]
-                    emb = torch.cat([self._emb(self._le_tok), self._emb(tgt[None])], 1)  # AR: latent_end BOS + targets
-                    logits = checkpoint(self._recon_decode, emb, *kv, use_reentrant=False)[:-1]
-                    if self._debug_seen < self.debug_recon_print and int(os.environ.get("RANK", 0)) == 0:
-                        pred, tok = logits.argmax(-1), getattr(self, "tok", None)
-                        text = f" target={tok.decode(tgt[:80].tolist())!r} pred={tok.decode(pred[:80].tolist())!r}" if tok else ""
-                        print(f"[recon-debug] frame={self._debug_seen} len={ids.numel()} used={n}{text}", flush=True)
-                        self._debug_seen += 1
-                    rec_logits.append(logits); rec_targets.append(tgt)
+                    total += 1; trunc += ids.numel() > self.max_recon_len
+                    rec.append(self._recon_frame(cache, ids))
                 continue
-            ce_logits.append(prev_logits); ce_targets.append(ids[:1])
             out = self.model(inputs_embeds=self._emb(ids[None]), past_key_values=cache,
                              use_cache=True, output_hidden_states=kd)  # hiddens only for KD anchors
             cache, logits = out.past_key_values, out.logits[0]
+            ce.append((prev_logits, ids[:1]))
+            
             if ids.numel() > 1:
-                ce_logits.append(logits[:-1]); ce_targets.append(ids[1:])
+                ce.append((logits[:-1], ids[1:]))
             prev_logits = logits[-1:]
             if kd:  # action_sep is this segment's first token
                 kd_vecs.append([hs[0, 0] for hs in out.hidden_states[1:]])
-        ce = F.cross_entropy(torch.cat(ce_logits), torch.cat(ce_targets))
-        rec = F.cross_entropy(torch.cat(rec_logits), torch.cat(rec_targets)) if rec_logits else ce.new_zeros(())
+
+        s_ce = F.cross_entropy(torch.cat([l for l, _ in ce]), torch.cat([t for _, t in ce]))
+        s_rec = (F.cross_entropy(torch.cat([l for l, _ in rec]), torch.cat([t for _, t in rec]))
+                 if rec else s_ce.new_zeros(()))
         s_kd = [torch.stack([v[l] for v in kd_vecs]) for l in range(len(kd_vecs[0]))]
-        return ce, s_kd, rec, trunc, total
+        return s_ce, s_kd, s_rec, trunc, total
 
     def _kd_loss(self, s_kd, t_kd):  # all-layer hidden align, smooth_l1
         return F.smooth_l1_loss(torch.stack(s_kd), torch.stack(t_kd).detach())
@@ -145,7 +149,8 @@ def main():
     tok = AutoTokenizer.from_pretrained(args.model, use_fast=True)
     add_trace_tokens(tok)  # idempotent
     ids = token_ids(tok)
-    base = AutoModelForCausalLM.from_pretrained(args.model, torch_dtype=torch.bfloat16)
+    cfg = sliding_window(AutoConfig.from_pretrained(args.model), args.sliding_window)
+    base = AutoModelForCausalLM.from_pretrained(args.model, config=cfg, torch_dtype=torch.bfloat16, attn_implementation=args.attn_impl)
     base.config.use_cache = True
     model = CodiRecon(base, latent_start_id=ids["<|latent_start|>"], latent_end_id=ids["<|latent_end|>"],
                       latent_steps=args.latent_steps, a=args.alpha, b=args.beta, g=args.gamma,

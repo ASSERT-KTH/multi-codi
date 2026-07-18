@@ -40,6 +40,8 @@ torchrun --nproc_per_node="${NPROC:-8}" --master_port=$((20000 + RANDOM % 10000)
   --len_mult "${LEN_MULT:-1.5}" \
   --latent_steps "$LS" \
   --batch_size "${BATCH:-8}" \
+  --sliding_window "${SLIDING_WINDOW:-0}" \
+  --attn_impl "${ATTN_IMPL:-flash_attention_2}" \
   --out "${OUT:?set OUT}"
 
 # ranks write ${OUT}.r*.jsonl incrementally; merge into the final ${OUT} JSON

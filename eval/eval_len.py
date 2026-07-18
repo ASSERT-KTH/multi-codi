@@ -13,12 +13,13 @@ import math
 import os
 
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
 
 from data.precompute_loader import _len, load_cache
 from data.dataset import _prompt_str
 from data.tokens import add_trace_tokens, token_ids
 from eval.codi_infer import gen_latent, gen_single, load_codi, load_codi_single
+from train.codi_core import sliding_window
 from eval.scoring import check_correct, extract_answer_trace_full
 
 
@@ -35,6 +36,8 @@ def main():
     ap.add_argument("--min_len", type=int, default=0)
     ap.add_argument("--max_len", type=int, default=1 << 60)
     ap.add_argument("--out", default="")
+    ap.add_argument("--sliding_window", type=int, default=0)
+    ap.add_argument("--attn_impl", default="flash_attention_2")
     args = ap.parse_args()
 
     rank = int(os.environ.get("RANK", 0))
@@ -50,8 +53,9 @@ def main():
         add_trace_tokens(tok)
         tok.padding_side = "left"  # left-pad so all generated tokens start at the same offset
         eot = token_ids(tok)["<|end_of_text|>"]
+        cfg = sliding_window(AutoConfig.from_pretrained(args.model), args.sliding_window)
         model = AutoModelForCausalLM.from_pretrained(
-            args.model, torch_dtype=torch.bfloat16).to(local_rank).eval()
+            args.model, config=cfg, torch_dtype=torch.bfloat16, attn_implementation=args.attn_impl).to(local_rank).eval()
 
         def gen_batch(batch, caps):
             enc = tok([_prompt_str(r["code"], r["input"]) for r in batch],
@@ -68,10 +72,10 @@ def main():
     else:
         args.batch_size = 1  # latent decode is per-row (growing cache, per-row latent insertion)
         if args.mode == "codi":
-            tok, ids, model = load_codi(args.model, args.latent_steps, local_rank)
+            tok, ids, model = load_codi(args.model, args.latent_steps, local_rank, args.sliding_window, args.attn_impl)
             ls_id, act_id, eot = ids["<|line_sep|>"], ids["<|action_sep|>"], ids["<|end_of_text|>"]
         else:
-            tok, ids, model = load_codi_single(args.model, args.latent_steps, local_rank)
+            tok, ids, model = load_codi_single(args.model, args.latent_steps, local_rank, args.sliding_window, args.attn_impl)
             eot = ids["<|end_of_text|>"]
 
         def gen_batch(batch, caps):

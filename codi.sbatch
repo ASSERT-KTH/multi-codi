@@ -44,10 +44,7 @@ case "$MODE" in
     ) ;;
 
   multi)
-    MODULE=train.train_codi
-    MODE_ARGS=(
-      --ss_prob "${SS_PROB:-0}"
-    ) ;;
+    MODULE=train.train_codi ;;
 
   recon)
     MODULE=train.train_codi_recon
@@ -57,6 +54,7 @@ case "$MODE" in
       --recon_w "${RECON_W:-0.1}"
       --max_recon_len "${MAX_RECON_LEN:-64}"
       --recon_attn "${RECON_ATTN:-local}"
+      --recon_target "${RECON_TARGET:-diff}"
       --debug_recon_print "${DEBUG_RECON_PRINT:-0}"
     ) ;;
 

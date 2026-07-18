@@ -7,15 +7,17 @@ import torch
 from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
 
 from data.tokens import add_trace_tokens, token_ids
+from train.codi_core import sliding_window
 from train.train_codi import CodiModel
 from train.train_codi_single import CodiSingle
 
 
-def load_codi(m, latent_steps, dev):
+def load_codi(m, latent_steps, dev, sw=0, attn_impl="flash_attention_2"):
     tok = AutoTokenizer.from_pretrained(m, use_fast=True)
     add_trace_tokens(tok)
     ids = token_ids(tok)
-    base = AutoModelForCausalLM.from_config(AutoConfig.from_pretrained(m), torch_dtype=torch.bfloat16)
+    cfg = sliding_window(AutoConfig.from_pretrained(m), sw)
+    base = AutoModelForCausalLM.from_config(cfg, torch_dtype=torch.bfloat16, attn_implementation=attn_impl)
     model = CodiModel(base, latent_start_id=ids["<|latent_start|>"],
                       latent_end_id=ids["<|latent_end|>"], latent_steps=latent_steps)
     if os.path.exists(f"{m}/pytorch_model.bin"):  # epoch checkpoint: full CodiModel
@@ -27,7 +29,7 @@ def load_codi(m, latent_steps, dev):
             print(f"ignored {len(drop)} recon-only keys", flush=True)
         model.load_state_dict(sd)
     else:  # final export: backbone safetensors + separate projector
-        model.model = AutoModelForCausalLM.from_pretrained(m, torch_dtype=torch.bfloat16)
+        model.model = AutoModelForCausalLM.from_pretrained(m, config=cfg, torch_dtype=torch.bfloat16, attn_implementation=attn_impl)
         model.prj.load_state_dict(torch.load(f"{m}/thought_projector.pt", map_location="cpu"))
     return tok, ids, model.to(dev).eval()
 
@@ -57,11 +59,12 @@ def gen_latent(model, prompt_ids, ls_id, act_id, eot, max_new):
     return out, n_fwd
 
 
-def load_codi_single(m, latent_steps, dev):
+def load_codi_single(m, latent_steps, dev, sw=0, attn_impl="flash_attention_2"):
     tok = AutoTokenizer.from_pretrained(m, use_fast=True)
     add_trace_tokens(tok)
     ids = token_ids(tok)
-    base = AutoModelForCausalLM.from_config(AutoConfig.from_pretrained(m), torch_dtype=torch.bfloat16)
+    cfg = sliding_window(AutoConfig.from_pretrained(m), sw)
+    base = AutoModelForCausalLM.from_config(cfg, torch_dtype=torch.bfloat16, attn_implementation=attn_impl)
     model = CodiSingle(base, latent_start_id=ids["<|latent_start|>"],
                        latent_end_id=ids["<|latent_end|>"], latent_steps=latent_steps)
     if os.path.exists(f"{m}/pytorch_model.bin"):  # checkpoint: full CodiSingle
@@ -71,7 +74,7 @@ def load_codi_single(m, latent_steps, dev):
         bad = [k for k in res.missing_keys if not k.startswith(("body.", "head."))]
         assert not bad and not res.unexpected_keys, f"state_dict mismatch: missing={bad} unexpected={res.unexpected_keys}"
     else:  # final export: backbone safetensors + separate projector
-        model.model = AutoModelForCausalLM.from_pretrained(m, torch_dtype=torch.bfloat16)
+        model.model = AutoModelForCausalLM.from_pretrained(m, config=cfg, torch_dtype=torch.bfloat16, attn_implementation=attn_impl)
         model.prj.load_state_dict(torch.load(f"{m}/thought_projector.pt", map_location="cpu"))
     return tok, ids, model.to(dev).eval()
 
