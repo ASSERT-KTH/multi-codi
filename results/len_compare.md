@@ -1,6 +1,6 @@
 # len_sft vs len_codi — held-out length comparison
 
-_Generated 2026-07-05 from `results/…/len_*.json` (CruxEval held-out, n=1290 each) via `python -m eval.stats_by_length`._
+_Generated 2026-07-05 from `results/…/len_*.json` (CruxEval held-out, n=1290 each) via `python -m eval.diag.stats_by_length`._
 
 _Truncation is judged on forward steps (`n_fwd ≥ max_new`) uniformly for SFT and CODI. A row that exhausts its forward-step budget is scored **truncated → invalid → wrong**, so it drops out of pass@1 / valid% / condAcc. CODI's latent steps make `n_fwd > n_gen`; the eval logged results under an `n_gen` runtime cap, so over-budget CODI rows are handled post-hoc by this rule (greedy decode ⇒ the tighter `n_fwd` trajectory is a prefix of the logged one — no re-run). SFT has `n_fwd = n_gen`._
 

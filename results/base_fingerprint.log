@@ -1,10 +1,0 @@
-55488 examples in cache; fingerprinting on first 256
-[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
-Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights:  29%|██▉       | 99/338 [00:00<00:00, 984.17it/s]Loading weights:  59%|█████▊    | 198/338 [00:00<00:00, 940.03it/s]Loading weights:  87%|████████▋ | 295/338 [00:00<00:00, 953.08it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 944.43it/s]
-[model_weights/sft1.5b_lr2e5_bs32/checkpoint-6936] mean_trace_CE=0.0310  median=0.0008  p10=0.0002  p90=0.1152
-Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights:  16%|█▌        | 53/338 [00:00<00:00, 527.21it/s]Loading weights:  38%|███▊      | 127/338 [00:00<00:00, 624.37it/s]Loading weights:  58%|█████▊    | 197/338 [00:00<00:00, 639.32it/s]Loading weights:  82%|████████▏ | 277/338 [00:00<00:00, 695.40it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 686.88it/s]
-[model_weights/sft1.5b_lr2e5_bs32_underfit2k/checkpoint-2000] mean_trace_CE=0.0370  median=0.0087  p10=0.0008  p90=0.1035
-Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights:  22%|██▏       | 75/338 [00:00<00:00, 737.20it/s]Loading weights:  44%|████▍     | 150/338 [00:00<00:00, 742.52it/s]Loading weights:  69%|██████▉   | 233/338 [00:00<00:00, 758.21it/s]Loading weights:  91%|█████████▏| 309/338 [00:00<00:00, 732.65it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 755.72it/s]
-[model_weights/sft1.5b_lr2e5_bs32_underfit2k/checkpoint-1000] mean_trace_CE=0.0377  median=0.0114  p10=0.0008  p90=0.1001
-Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights:  20%|██        | 69/338 [00:00<00:00, 683.53it/s]Loading weights:  42%|████▏     | 141/338 [00:00<00:00, 679.78it/s]Loading weights:  67%|██████▋   | 226/338 [00:00<00:00, 703.95it/s]Loading weights:  91%|█████████▏| 309/338 [00:00<00:00, 724.20it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 750.46it/s]
-[model_weights/sft1.5b_lr2e5_bs32_underfit2k/checkpoint-200] mean_trace_CE=0.0449  median=0.0261  p10=0.0046  p90=0.1133

@@ -1,0 +1,166 @@
+W0716 11:53:05.235000 346246 site-packages/torch/distributed/run.py:766] 
+W0716 11:53:05.235000 346246 site-packages/torch/distributed/run.py:766] *****************************************
+W0716 11:53:05.235000 346246 site-packages/torch/distributed/run.py:766] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W0716 11:53:05.235000 346246 site-packages/torch/distributed/run.py:766] *****************************************
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 5752.31it/s]
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 5569.86it/s]
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 6241.63it/s]
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 4908.74it/s]
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 7259.93it/s]
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 6688.12it/s]
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 10619.68it/s]
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 6656.56it/s]
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 5706.56it/s]
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 6467.32it/s]
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 5020.72it/s]
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 5077.18it/s]
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 5675.08it/s]
+Loading weights: 100%|██████████| 338/338 [00:00<00:00, 3385.54it/s]
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 7381.26it/s]
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 5145.90it/s]
+[transformers] This is a friendly reminder - the current text generation call has exceeded the model's predefined maximum length (32768). Depending on the model, you may observe exceptions, performance degradation, or nothing at all.
+[transformers] This is a friendly reminder - the current text generation call has exceeded the model's predefined maximum length (32768). Depending on the model, you may observe exceptions, performance degradation, or nothing at all.
+[transformers] This is a friendly reminder - the current text generation call has exceeded the model's predefined maximum length (32768). Depending on the model, you may observe exceptions, performance degradation, or nothing at all.
+[transformers] This is a friendly reminder - the current text generation call has exceeded the model's predefined maximum length (32768). Depending on the model, you may observe exceptions, performance degradation, or nothing at all.
+[transformers] This is a friendly reminder - the current text generation call has exceeded the model's predefined maximum length (32768). Depending on the model, you may observe exceptions, performance degradation, or nothing at all.
+[transformers] This is a friendly reminder - the current text generation call has exceeded the model's predefined maximum length (32768). Depending on the model, you may observe exceptions, performance degradation, or nothing at all.
+[transformers] This is a friendly reminder - the current text generation call has exceeded the model's predefined maximum length (32768). Depending on the model, you may observe exceptions, performance degradation, or nothing at all.
+[transformers] This is a friendly reminder - the current text generation call has exceeded the model's predefined maximum length (32768). Depending on the model, you may observe exceptions, performance degradation, or nothing at all.
+[transformers] This is a friendly reminder - the current text generation call has exceeded the model's predefined maximum length (32768). Depending on the model, you may observe exceptions, performance degradation, or nothing at all.
+[transformers] This is a friendly reminder - the current text generation call has exceeded the model's predefined maximum length (32768). Depending on the model, you may observe exceptions, performance degradation, or nothing at all.
+[transformers] This is a friendly reminder - the current text generation call has exceeded the model's predefined maximum length (32768). Depending on the model, you may observe exceptions, performance degradation, or nothing at all.
+[transformers] This is a friendly reminder - the current text generation call has exceeded the model's predefined maximum length (32768). Depending on the model, you may observe exceptions, performance degradation, or nothing at all.
+[transformers] This is a friendly reminder - the current text generation call has exceeded the model's predefined maximum length (32768). Depending on the model, you may observe exceptions, performance degradation, or nothing at all.
+[transformers] This is a friendly reminder - the current text generation call has exceeded the model's predefined maximum length (32768). Depending on the model, you may observe exceptions, performance degradation, or nothing at all.
+[transformers] This is a friendly reminder - the current text generation call has exceeded the model's predefined maximum length (32768). Depending on the model, you may observe exceptions, performance degradation, or nothing at all.
+[transformers] This is a friendly reminder - the current text generation call has exceeded the model's predefined maximum length (32768). Depending on the model, you may observe exceptions, performance degradation, or nothing at all.
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/x_sirli/distill_cwm/codi_trace/eval/eval_len.py", line 122, in <module>
+    main()
+  File "/home/x_sirli/distill_cwm/codi_trace/eval/eval_len.py", line 104, in main
+    for r, cap, (g, n_gen, n_fwd) in zip(batch, bcaps, gen_batch(batch, bcaps)):
+                                                       ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/x_sirli/distill_cwm/codi_trace/eval/eval_len.py", line 64, in gen_batch
+    out = model.generate(**enc, max_new_tokens=max(caps), do_sample=False,
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proj/assert-berzelius/users/x_sirli/conda/envs/CWM/lib/python3.11/site-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/proj/assert-berzelius/users/x_sirli/conda/envs/CWM/lib/python3.11/site-packages/transformers/generation/utils.py", line 2580, in generate
+    result = decoding_method(
+             ^^^^^^^^^^^^^^^^
+  File "/proj/assert-berzelius/users/x_sirli/conda/envs/CWM/lib/python3.11/site-packages/transformers/generation/utils.py", line 2787, in _sample
+    outputs = model_forward(**model_inputs, return_dict=True)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proj/assert-berzelius/users/x_sirli/conda/envs/CWM/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proj/assert-berzelius/users/x_sirli/conda/envs/CWM/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proj/assert-berzelius/users/x_sirli/conda/envs/CWM/lib/python3.11/site-packages/transformers/utils/generic.py", line 903, in wrapper
+    output = func(self, *args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proj/assert-berzelius/users/x_sirli/conda/envs/CWM/lib/python3.11/site-packages/transformers/models/qwen2/modeling_qwen2.py", line 462, in forward
+    outputs: BaseModelOutputWithPast = self.model(
+                                       ^^^^^^^^^^^
+  File "/proj/assert-berzelius/users/x_sirli/conda/envs/CWM/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proj/assert-berzelius/users/x_sirli/conda/envs/CWM/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proj/assert-berzelius/users/x_sirli/conda/envs/CWM/lib/python3.11/site-packages/transformers/utils/generic.py", line 1032, in wrapper
+    output = func(self, *args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proj/assert-berzelius/users/x_sirli/conda/envs/CWM/lib/python3.11/site-packages/transformers/utils/output_capturing.py", line 252, in wrapper
+    outputs = func(self, *args, **kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proj/assert-berzelius/users/x_sirli/conda/envs/CWM/lib/python3.11/site-packages/transformers/models/qwen2/modeling_qwen2.py", line 399, in forward
+    hidden_states = decoder_layer(
+                    ^^^^^^^^^^^^^^
+  File "/proj/assert-berzelius/users/x_sirli/conda/envs/CWM/lib/python3.11/site-packages/transformers/modeling_layers.py", line 93, in __call__
+    return super().__call__(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proj/assert-berzelius/users/x_sirli/conda/envs/CWM/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proj/assert-berzelius/users/x_sirli/conda/envs/CWM/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proj/assert-berzelius/users/x_sirli/conda/envs/CWM/lib/python3.11/site-packages/transformers/models/qwen2/modeling_qwen2.py", line 293, in forward
+    hidden_states, _ = self.self_attn(
+                       ^^^^^^^^^^^^^^^
+  File "/proj/assert-berzelius/users/x_sirli/conda/envs/CWM/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proj/assert-berzelius/users/x_sirli/conda/envs/CWM/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proj/assert-berzelius/users/x_sirli/conda/envs/CWM/lib/python3.11/site-packages/transformers/models/qwen2/modeling_qwen2.py", line 231, in forward
+    attn_output, attn_weights = attention_interface(
+                                ^^^^^^^^^^^^^^^^^^^^
+  File "/proj/assert-berzelius/users/x_sirli/conda/envs/CWM/lib/python3.11/site-packages/transformers/integrations/flash_attention.py", line 69, in flash_attention_forward
+    attn_output = _flash_attention_forward(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proj/assert-berzelius/users/x_sirli/conda/envs/CWM/lib/python3.11/site-packages/transformers/modeling_flash_attention_utils.py", line 750, in _flash_attention_forward
+    q, k, v, indices_q, (cu_seq_lens_q, cu_seq_lens_k), (max_length_q, max_length_k) = _upad_input(
+                                                                                       ^^^^^^^^^^^^
+  File "/proj/assert-berzelius/users/x_sirli/conda/envs/CWM/lib/python3.11/site-packages/transformers/modeling_flash_attention_utils.py", line 409, in _upad_input
+    value_layer = _index_first_axis(value_layer, indices_k)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proj/assert-berzelius/users/x_sirli/conda/envs/CWM/lib/python3.11/site-packages/transformers/modeling_flash_attention_utils.py", line 277, in _index_first_axis
+    return reshaped_tensor[indices]
+           ~~~~~~~~~~~~~~~^^^^^^^^^
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 254.00 MiB. GPU 2 has a total capacity of 79.25 GiB of which 252.00 MiB is free. Process 346317 has 19.69 GiB memory in use. Process 346321 has 20.33 GiB memory in use. Process 346329 has 20.41 GiB memory in use. Including non-PyTorch memory, this process has 18.55 GiB memory in use. Of the allocated memory 17.39 GiB is allocated by PyTorch, and 677.56 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+W0716 22:02:24.371000 346246 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 346315 closing signal SIGTERM
+W0716 22:02:24.374000 346246 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 346316 closing signal SIGTERM
+W0716 22:02:24.379000 346246 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 346317 closing signal SIGTERM
+W0716 22:02:24.384000 346246 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 346318 closing signal SIGTERM
+W0716 22:02:24.387000 346246 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 346319 closing signal SIGTERM
+W0716 22:02:24.390000 346246 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 346320 closing signal SIGTERM
+W0716 22:02:24.392000 346246 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 346321 closing signal SIGTERM
+W0716 22:02:24.396000 346246 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 346322 closing signal SIGTERM
+W0716 22:02:24.397000 346246 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 346323 closing signal SIGTERM
+W0716 22:02:24.400000 346246 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 346324 closing signal SIGTERM
+W0716 22:02:24.408000 346246 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 346326 closing signal SIGTERM
+W0716 22:02:24.416000 346246 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 346327 closing signal SIGTERM
+W0716 22:02:24.421000 346246 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 346328 closing signal SIGTERM
+W0716 22:02:24.422000 346246 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 346329 closing signal SIGTERM
+W0716 22:02:24.424000 346246 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 346330 closing signal SIGTERM
+E0716 22:02:28.940000 346246 site-packages/torch/distributed/elastic/multiprocessing/api.py:874] failed (exitcode: 1) local_rank: 10 (pid: 346325) of binary: /proj/assert-berzelius/users/x_sirli/conda/envs/CWM/bin/python3.11
+Traceback (most recent call last):
+  File "/proj/assert-berzelius/users/x_sirli/conda/envs/CWM/bin/torchrun", line 6, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/proj/assert-berzelius/users/x_sirli/conda/envs/CWM/lib/python3.11/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 355, in wrapper
+    return f(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^
+  File "/proj/assert-berzelius/users/x_sirli/conda/envs/CWM/lib/python3.11/site-packages/torch/distributed/run.py", line 892, in main
+    run(args)
+  File "/proj/assert-berzelius/users/x_sirli/conda/envs/CWM/lib/python3.11/site-packages/torch/distributed/run.py", line 883, in run
+    elastic_launch(
+  File "/proj/assert-berzelius/users/x_sirli/conda/envs/CWM/lib/python3.11/site-packages/torch/distributed/launcher/api.py", line 139, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proj/assert-berzelius/users/x_sirli/conda/envs/CWM/lib/python3.11/site-packages/torch/distributed/launcher/api.py", line 270, in launch_agent
+    raise ChildFailedError(
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+============================================================
+eval.eval_len FAILED
+------------------------------------------------------------
+Failures:
+  <NO_OTHER_FAILURES>
+------------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2026-07-16_22:02:24
+  host      : node062
+  rank      : 10 (local_rank: 10)
+  exitcode  : 1 (pid: 346325)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+============================================================
+merged 16 shards  pass@1=0.0312 valid_format=0.8750 (n=96) mean_fwd=27855.4 mean_gen=27855.4

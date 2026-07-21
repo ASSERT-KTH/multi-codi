@@ -24,7 +24,7 @@ from datasets import Dataset
 from .dataset import build_trace_record, rows_for_sources
 from .tokens import add_trace_tokens
 
-TOK = MAX_FRAMES = MODE = TIMEOUT = None
+TOK = MAX_FRAMES = MODE = TIMEOUT = TRACE_TARGET = None
 
 
 def _alarm(*_):
@@ -35,14 +35,14 @@ def _no_net(*_a, **_k):
     raise OSError("network disabled")
 
 
-def _init(model, max_frames, mode, timeout):
+def _init(model, max_frames, mode, timeout, trace_target):
     import socket
     from transformers import AutoTokenizer
 
-    global TOK, MAX_FRAMES, MODE, TIMEOUT
+    global TOK, MAX_FRAMES, MODE, TIMEOUT, TRACE_TARGET
     TOK = AutoTokenizer.from_pretrained(model, use_fast=True)
     add_trace_tokens(TOK)
-    MAX_FRAMES, MODE, TIMEOUT = max_frames, mode, timeout
+    MAX_FRAMES, MODE, TIMEOUT, TRACE_TARGET = max_frames, mode, timeout, trace_target
     signal.signal(signal.SIGALRM, _alarm)
     # DNS (getaddrinfo) blocks in C and ignores SIGALRM, hanging the pool.
     socket.getaddrinfo = socket.create_connection = socket.socket = _no_net
@@ -51,7 +51,7 @@ def _init(model, max_frames, mode, timeout):
 def _work(row):
     signal.alarm(TIMEOUT)
     try:
-        ex = build_trace_record(row["code"], row["input"], TOK, max_frames=MAX_FRAMES)
+        ex = build_trace_record(row["code"], row["input"], TOK, max_frames=MAX_FRAMES, trace_target=TRACE_TARGET)
         if ex is not None:
             ex["row_id"] = row["id"]
             ex["code"], ex["input"], ex["output"] = row["code"], row["input"], row["output"]
@@ -71,6 +71,7 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--workers", type=int, default=max(1, mp.cpu_count() // 2))
     ap.add_argument("--timeout", type=int, default=5)
+    ap.add_argument("--trace_target", choices=["diff", "full"], default="diff")
     args = ap.parse_args()
 
     out = Path(args.out)
@@ -80,16 +81,21 @@ def main():
     out.parent.mkdir(parents=True, exist_ok=True)
 
     rows = rows_for_sources(args.sources)
+    # nth_prime allocates a 1M-element `sieve` list as a local; full-state trace_target
+    # re-embeds it whole at every frame (no ".." diff compression), so rendering this one
+    # takes ~tens of minutes regardless of input. Excluded by id, not a general size cap.
+    _SKIP_IDS = {"pyx_fwd_mnl_108873_ipt4", "pyx_fwd_mnl_108873_ipt6"}
+    rows = [r for r in rows if r["id"] not in _SKIP_IDS]
 
     n = len(rows)
-    print(f"{n} rows -> {args.out} ({args.mode}, workers={args.workers})", flush=True)
-    init_args = (args.model, args.max_frames, args.mode, args.timeout)
+    print(f"{n} rows -> {args.out} ({args.mode}, workers={args.workers}, trace_target={args.trace_target})", flush=True)
+    init_args = (args.model, args.max_frames, args.mode, args.timeout, args.trace_target)
     if args.workers == 1:
         _init(*init_args)
         results = map(_work, rows)
     else:
         pool = mp.Pool(args.workers, _init, init_args)
-        results = pool.imap_unordered(_work, rows, chunksize=16)
+        results = pool.imap_unordered(_work, rows, chunksize=4)
 
     examples, t0 = [], time.time()
     for i, ex in enumerate(results, 1):

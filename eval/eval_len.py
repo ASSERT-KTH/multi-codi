@@ -51,6 +51,8 @@ def main():
     if args.mode == "sft":
         tok = AutoTokenizer.from_pretrained(args.model, use_fast=True)
         add_trace_tokens(tok)
+        if tok.pad_token is None:
+            tok.pad_token = tok.eos_token
         tok.padding_side = "left"  # left-pad so all generated tokens start at the same offset
         eot = token_ids(tok)["<|end_of_text|>"]
         cfg = sliding_window(AutoConfig.from_pretrained(args.model), args.sliding_window)

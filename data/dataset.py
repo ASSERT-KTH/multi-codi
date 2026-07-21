@@ -18,6 +18,7 @@ from .trace_format import (
 )
 
 IGNORE_INDEX = -100
+_MAX_GENERATION_CHARS = 200_000  # sanity cap on rendered trace text before tokenizing; see _tokenize_trace
 
 _LOCAL = {"mbpp": "MBPP", "humaneval": "HumanEval", "pyx": "PyX", "ds256k": "Ds256k"}  # name -> folder, data in ./data
 
@@ -46,12 +47,13 @@ def _prompt_str(code: str, input_str: str) -> str:
     return f"<|trace_context_start|>{ctx}<|frame_sep|><|call_sep|>{{}}<|action_sep|>def main():\n<|frame_sep|>"
 
 
-def _tokenize_trace(code, input_str, tokenizer, *, max_frames):
+def _tokenize_trace(code, input_str, tokenizer, *, max_frames, trace_target="diff"):
     """``(prompt_ids, trace_ids, spans, locals_ids, full_locals_ids)``; None to skip. Trace must
     terminate in RETURN/EXCEPTION and have >=1 LINE span. Span ``(i, j)``: ``trace_ids[i]`` is
     ``<|line_sep|>``, ``j`` its ``<|action_sep|>``, ``trace_ids[i+1:j]`` the locals a CODI student
     swaps for a latent block. ``locals_ids``/``full_locals_ids``: per-LINE-frame diff/full locals,
-    the two reconstruction targets. Single membership source for SFT and CODI; length cap at load."""
+    the two reconstruction targets, independent of which one ``trace_target`` renders into
+    ``trace_ids`` itself. Single membership source for SFT and CODI; length cap at load."""
     frames, error = ground_truth_trace(code, input_str, align_to_prompt=True, max_frames=max_frames)
     if not frames or error == "frames_exceeded":
         return None
@@ -60,7 +62,8 @@ def _tokenize_trace(code, input_str, tokenizer, *, max_frames):
     # Qwen has no BOS (bos_token_id is None); CWM did. Prepend only if present.
     bos = [tokenizer.bos_token_id] if tokenizer.bos_token_id is not None else []
     prompt_ids = bos + tokenizer.encode(_prompt_str(code, input_str), add_special_tokens=False)
-    trace_ids = tokenizer.encode(render_frames_to_generation(frames), add_special_tokens=False)
+    trace_ids = tokenizer.encode(render_frames_to_generation(frames, use_full=trace_target == "full"),
+                                  add_special_tokens=False)
     ls = tokenizer.convert_tokens_to_ids(LINE_SEP)
     asep = tokenizer.convert_tokens_to_ids(ACTION_SEP)
     spans, i, n = [], 0, len(trace_ids)
@@ -86,9 +89,11 @@ def _tokenize_trace(code, input_str, tokenizer, *, max_frames):
     return prompt_ids, trace_ids, spans, locals_ids, full_locals_ids
 
 
-def build_trace_record(code, input_str, tokenizer, *, max_frames=-1):
-    """Tokenized trace record ``{prompt_ids, trace_ids, spans, locals_ids, full_locals_ids}``; None to skip."""
-    r = _tokenize_trace(code, input_str, tokenizer, max_frames=max_frames)
+def build_trace_record(code, input_str, tokenizer, *, max_frames=-1, trace_target="diff"):
+    """Tokenized trace record ``{prompt_ids, trace_ids, spans, locals_ids, full_locals_ids}``; None to skip.
+    ``trace_target``: which locals representation the visible ``trace_ids`` text itself renders
+    (diff or full state); independent of the per-frame ``locals_ids``/``full_locals_ids`` targets."""
+    r = _tokenize_trace(code, input_str, tokenizer, max_frames=max_frames, trace_target=trace_target)
     if r is None:
         return None
     prompt_ids, trace_ids, spans, locals_ids, full_locals_ids = r

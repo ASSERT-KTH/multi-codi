@@ -1,0 +1,14 @@
+W0720 08:42:23.204000 1822218 site-packages/torch/distributed/run.py:766] 
+W0720 08:42:23.204000 1822218 site-packages/torch/distributed/run.py:766] *****************************************
+W0720 08:42:23.204000 1822218 site-packages/torch/distributed/run.py:766] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W0720 08:42:23.204000 1822218 site-packages/torch/distributed/run.py:766] *****************************************
+Loading weights:   0%|          | 0/579 [00:00<?, ?it/s]Loading weights:   0%|          | 0/579 [00:00<?, ?it/s]Loading weights: 100%|██████████| 579/579 [00:00<00:00, 9597.08it/s]
+Loading weights: 100%|██████████| 579/579 [00:00<00:00, 6374.21it/s]
+Loading weights:   0%|          | 0/579 [00:00<?, ?it/s]Loading weights: 100%|██████████| 579/579 [00:00<00:00, 7145.85it/s]
+Loading weights:   0%|          | 0/579 [00:00<?, ?it/s]Loading weights: 100%|██████████| 579/579 [00:00<00:00, 7484.84it/s]
+  rank0 40/200  pass@1=0.9250
+  rank0 80/200  pass@1=0.8625
+  rank0 120/200  pass@1=0.8833
+  rank0 160/200  pass@1=0.8688
+  rank0 200/200  pass@1=0.8500
+merged 4 shards  pass@1=0.8638 valid_format=0.9962 (n=800) mean_fwd=451.3 mean_gen=451.3

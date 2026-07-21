@@ -176,16 +176,21 @@ def _parse_segment(seg: str) -> tuple[TraceFrame | None, bool]:
     )
 
 
-def render_frames_to_generation(frames: list[TraceFrame]) -> str:
+def render_frames_to_generation(frames: list[TraceFrame], *, use_full: bool = False) -> str:
     """Render frames back to the wire string; inverse of ``parse_generated_trace``.
 
     A ground-truth trace rendered this way must round-trip to a perfect score.
+    ``use_full``: render each frame's full-state locals instead of the diff locals.
     """
     out: list[str] = []
     for f in frames:
         out.append(_EVENT_TO_TOKEN[f.event])
         if f.has_locals:
-            out.append(json.dumps(f.locals if f.locals is not None else {}))
+            # Reuse the JSON string ground_truth.py already computed for this frame instead of
+            # re-dumping the dict here: full_locals in particular can hold a large/growing object
+            # that's identical to (or reachable in) an earlier frame's, so a second full re-serialize
+            # per frame turns an O(frames) trace into an effectively O(frames^2) one for such traces.
+            out.append((f.full_locals_str if use_full else f.locals_str) or "{}")
         out.append(ACTION_SEP)
         out.append(f.source)
         if f.event in (TraceEvent.RETURN, TraceEvent.EXCEPTION):
