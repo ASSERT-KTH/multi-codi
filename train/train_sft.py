@@ -43,6 +43,25 @@ def sft_pair(example):
     return prompt_ids + trace_ids, [IGNORE_INDEX] * len(prompt_ids) + trace_ids
 
 
+def token_budget_batches(ds, max_tokens):
+    """Group (ids, labels) pairs into batches with batch_size * max_len_in_batch <= max_tokens
+    (that product, not the sum of lengths, is what padding actually costs). Longer examples end
+    up in smaller batches -- this is what actually bounds peak memory for long sequences;
+    group_by_length alone only reduces padding waste, it doesn't cap batch_size for long ones."""
+    order = sorted(range(len(ds)), key=lambda i: len(ds[i][0]))
+    batches, cur, cur_max = [], [], 0
+    for i in order:
+        n = len(ds[i][0])
+        if cur and max(cur_max, n) * (len(cur) + 1) > max_tokens:
+            batches.append(cur)
+            cur, cur_max = [], 0
+        cur.append(ds[i])
+        cur_max = max(cur_max, n)
+    if cur:
+        batches.append(cur)
+    return batches
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", default="Qwen/Qwen2.5-Coder-1.5B")
@@ -59,12 +78,14 @@ def main():
     ap.add_argument("--ratio", nargs="+", default=None)  # PATH_OR_GLOB:WEIGHT ...; overrides --cache_dir
     ap.add_argument("--total_n", type=int, default=None)
     ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument("--attn_impl", default="flash_attention_2")  # A100 compute nodes; sdpa fallback for non-Ampere
+    ap.add_argument("--max_tokens_per_batch", type=int, default=None)  # >0: dynamic token-budget batching, overrides --batch_size
     args = ap.parse_args()
 
     tok = AutoTokenizer.from_pretrained(args.model, use_fast=True)
     if tok.pad_token_id is None:
         tok.pad_token = tok.eos_token
-    model = AutoModelForCausalLM.from_pretrained(args.model, torch_dtype=torch.bfloat16)
+    model = AutoModelForCausalLM.from_pretrained(args.model, torch_dtype=torch.bfloat16, attn_implementation=args.attn_impl)
     model.config.use_cache = False  # required with gradient checkpointing
     n_added = add_trace_tokens(tok)
     resize_and_init(model, tok, n_added)
@@ -77,11 +98,20 @@ def main():
     ds = [sft_pair(e) for e in cache]
     print(f"{len(ds)} trace examples")
 
+    if args.max_tokens_per_batch:
+        ds = token_budget_batches(ds, args.max_tokens_per_batch)
+        batch_collate = lambda b: collate(b[0], tok.pad_token_id)
+        per_device_bs = 1
+        print(f"{len(ds)} token-budget batches (max {args.max_tokens_per_batch} tokens/batch)")
+    else:
+        batch_collate = lambda b: collate(b, tok.pad_token_id)
+        per_device_bs = args.batch_size
+
     report_to = wandb_init(args, "sft")
 
     targs = TrainingArguments(
         output_dir=args.output_dir,
-        per_device_train_batch_size=args.batch_size,
+        per_device_train_batch_size=per_device_bs,
         gradient_accumulation_steps=args.grad_accum,
         num_train_epochs=args.epochs,
         max_steps=args.max_steps,
@@ -104,7 +134,7 @@ def main():
         model=model,
         args=targs,
         train_dataset=ds,
-        data_collator=lambda b: collate(b, tok.pad_token_id),
+        data_collator=batch_collate,
         processing_class=tok,  # tokenizer saved into every checkpoint
     )
     # Auto-resume from the latest checkpoint if the job was interrupted.

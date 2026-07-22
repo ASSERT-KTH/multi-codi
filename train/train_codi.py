@@ -15,7 +15,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
 
-from train.codi_core import add_common_args, build_projector, latent_block, run_training, shared_teacher, sliding_window
+from train.codi_core import (add_common_args, build_projector, checkpointed_step,
+                              latent_block_ckpt, run_training, shared_teacher, sliding_window)
 from data.precompute_loader import load_cache, load_mixed_cache, parse_kv
 from data.dataset import IGNORE_INDEX
 from data.tokens import add_trace_tokens, token_ids
@@ -66,10 +67,10 @@ class CodiModel(nn.Module):
             hs = tch(input_ids=full_ids[None], use_cache=False, output_hidden_states=True).hidden_states
             return None, [l[0, pos] for l in self._kd(hs)]
 
-    def _latent_block(self, cache):
-        cache, logits, _ = latent_block(self.body, self.head, self._emb, self.prj,
-                                        self._ls_tok, self._le_tok, self.latent_steps, cache)
-        return cache, logits
+    def _latent_block(self, chunks):
+        logits, _ = latent_block_ckpt(self.body, self.head, self._emb, self.prj,
+                                      self._ls_tok, self._le_tok, self.latent_steps, chunks)
+        return logits
 
     def _student(self, prompt_ids, trace_ids, spans):
         # Kept-text chunks of trace_ids, in order; between consecutive chunks the
@@ -81,24 +82,24 @@ class CodiModel(nn.Module):
             prev, kd = j, True
         chunks.append((trace_ids[prev:], kd))
 
-        out = self.model(inputs_embeds=self._emb(prompt_ids[None]), use_cache=True)
-        
-        cache, prev_logits = out.past_key_values, out.logits[:, -1]  # predicts trace_ids[0]
+        kv_chunks = []
+        logits, _ = checkpointed_step(self.model, kv_chunks, self._emb(prompt_ids[None]))
+        prev_logits = logits[:, -1]  # predicts trace_ids[0]
         ce_logits, ce_targets, kd_vecs = [], [], []
         for c, (ids, kd) in enumerate(chunks):
-            out = self.model(inputs_embeds=self._emb(ids[None]), past_key_values=cache,
-                             use_cache=True, output_hidden_states=kd)  # hiddens only for KD anchors
-            cache, logits = out.past_key_values, out.logits[0]
+            logits, hidden = checkpointed_step(self.model, kv_chunks, self._emb(ids[None]),
+                                               want_hidden=kd)  # hiddens only for KD anchors
+            logits = logits[0]
             # carried prev_logits predicts ids[0], logits[:-1] predict ids[1:] -> together cover ids
-            ce_logits.append(torch.cat([prev_logits, logits[:-1]])); 
+            ce_logits.append(torch.cat([prev_logits, logits[:-1]]))
             ce_targets.append(ids)
             prev_logits = logits[-1:]
-            
+
             if kd:  # action_sep is this chunk's first token
-                kd_vecs.append([hs[0, 0] for hs in self._kd(out.hidden_states)])
+                kd_vecs.append([hs[0, 0] for hs in self._kd(hidden)])
             if c + 1 < len(chunks):  # latent block replaces the dropped locals; overwrite prev_logits, no CE
-                cache, prev_logits = self._latent_block(cache)
-                
+                prev_logits = self._latent_block(kv_chunks)
+
         ce = F.cross_entropy(torch.cat(ce_logits), torch.cat(ce_targets))
         s_kd = [torch.stack([v[l] for v in kd_vecs]) for l in range(len(kd_vecs[0]))]
         return ce, s_kd
