@@ -6,8 +6,8 @@ happens at load (data.precompute_loader)."""
 
 from __future__ import annotations
 
+import glob
 import os
-from pathlib import Path
 
 from .ground_truth import ground_truth_trace, make_trace_context
 from .trace_format import (
@@ -20,17 +20,10 @@ from .trace_format import (
 IGNORE_INDEX = -100
 _MAX_GENERATION_CHARS = 200_000  # sanity cap on rendered trace text before tokenizing; see _tokenize_trace
 
-_LOCAL = {"mbpp": "MBPP", "humaneval": "HumanEval", "pyx": "PyX", "ds256k": "Ds256k"}  # name -> folder, data in ./data
 
-
-def load_dataset(name: str) -> list[dict]:
-    key = name.strip().lower()
-    if key in _LOCAL:
-        from datasets import load_from_disk
-
-        d = os.environ.get(key.upper() + "_DIR") or str(Path(__file__).parent / _LOCAL[key] / "data")
-        return list(load_from_disk(d))
-    if key == "cruxeval":
+def load_dataset(source: str) -> list[dict]:
+    """source: a literal path, a glob pattern, or "cruxeval" (HF Hub, or $CRUXEVAL_DIR if set)."""
+    if source.strip().lower() == "cruxeval":
         local_dir = os.environ.get("CRUXEVAL_DIR")
         if local_dir and os.path.isdir(local_dir):
             from datasets import load_from_disk
@@ -39,7 +32,13 @@ def load_dataset(name: str) -> list[dict]:
         from datasets import load_dataset as hf_load_dataset
 
         return list(hf_load_dataset("cruxeval-org/cruxeval", split="test"))
-    raise ValueError(f"unknown data source {name!r}; pick from {['cruxeval', *_LOCAL]}")
+    from datasets import load_from_disk
+
+    paths = sorted(glob.glob(source)) if any(c in source for c in "*?[") else [source]
+    rows = []
+    for p in paths:
+        rows.extend(list(load_from_disk(p)))
+    return rows
 
 
 def _prompt_str(code: str, input_str: str) -> str:

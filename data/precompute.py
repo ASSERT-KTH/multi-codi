@@ -24,7 +24,7 @@ from datasets import Dataset
 from .dataset import build_trace_record, rows_for_sources
 from .tokens import add_trace_tokens
 
-TOK = MAX_FRAMES = MODE = TIMEOUT = TRACE_TARGET = None
+TOK = MAX_FRAMES = TIMEOUT = TRACE_TARGET = None
 
 
 def _alarm(*_):
@@ -35,14 +35,14 @@ def _no_net(*_a, **_k):
     raise OSError("network disabled")
 
 
-def _init(model, max_frames, mode, timeout, trace_target):
+def _init(model, max_frames, timeout, trace_target):
     import socket
     from transformers import AutoTokenizer
 
-    global TOK, MAX_FRAMES, MODE, TIMEOUT, TRACE_TARGET
+    global TOK, MAX_FRAMES, TIMEOUT, TRACE_TARGET
     TOK = AutoTokenizer.from_pretrained(model, use_fast=True)
     add_trace_tokens(TOK)
-    MAX_FRAMES, MODE, TIMEOUT, TRACE_TARGET = max_frames, mode, timeout, trace_target
+    MAX_FRAMES, TIMEOUT, TRACE_TARGET = max_frames, timeout, trace_target
     signal.signal(signal.SIGALRM, _alarm)
     # DNS (getaddrinfo) blocks in C and ignores SIGALRM, hanging the pool.
     socket.getaddrinfo = socket.create_connection = socket.socket = _no_net
@@ -65,8 +65,7 @@ def _work(row):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", required=True)
-    ap.add_argument("--mode", choices=["sft", "codi"], default="sft")
-    ap.add_argument("--sources", nargs="+", default=["mbpp", "humaneval", "pyx"])
+    ap.add_argument("--sources", nargs="+", default=["data/MBPP/data", "data/HumanEval/data", "data/PyX/data"])
     ap.add_argument("--max_frames", type=int, default=1024)
     ap.add_argument("--out", required=True)
     ap.add_argument("--workers", type=int, default=max(1, mp.cpu_count() // 2))
@@ -88,8 +87,8 @@ def main():
     rows = [r for r in rows if r["id"] not in _SKIP_IDS]
 
     n = len(rows)
-    print(f"{n} rows -> {args.out} ({args.mode}, workers={args.workers}, trace_target={args.trace_target})", flush=True)
-    init_args = (args.model, args.max_frames, args.mode, args.timeout, args.trace_target)
+    print(f"{n} rows -> {args.out} (workers={args.workers}, trace_target={args.trace_target})", flush=True)
+    init_args = (args.model, args.max_frames, args.timeout, args.trace_target)
     if args.workers == 1:
         _init(*init_args)
         results = map(_work, rows)

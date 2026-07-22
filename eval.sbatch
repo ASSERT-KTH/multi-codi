@@ -27,6 +27,12 @@ case "$MODE" in                             # per-mode defaults; unused flags ar
   *)        echo "unknown MODE=$MODE (want sft|codi|single)" >&2; exit 1 ;;
 esac
 
+# Length-mixing experiment: PER_BUCKET_N="PATH_OR_GLOB:N ..." (e.g. "data/cache/lenbuckets/0-256/shard9:200"
+# for the held-out test shard, or ".../shard*:200" for an unsharded extrapolation bucket) switches
+# eval_len.py to load_mixed_cache; --dataset is unused (but still required) in that case.
+MIX_ARGS=()
+[ -n "${PER_BUCKET_N:-}" ] && MIX_ARGS+=(--per_bucket_n $PER_BUCKET_N)
+
 # default 2 GPUs x 4 ranks/GPU (NPROC=8): oversubscribe so bs=1 latent decode keeps
 # per-GPU power above Berzelius's 90W low-power-efficiency kill threshold.
 torchrun --nproc_per_node="${NPROC:-8}" --master_port=$((20000 + RANDOM % 10000)) -m eval.eval_len \
@@ -42,7 +48,8 @@ torchrun --nproc_per_node="${NPROC:-8}" --master_port=$((20000 + RANDOM % 10000)
   --batch_size "${BATCH:-8}" \
   --sliding_window "${SLIDING_WINDOW:-0}" \
   --attn_impl "${ATTN_IMPL:-flash_attention_2}" \
-  --out "${OUT:?set OUT}"
+  --out "${OUT:?set OUT}" \
+  "${MIX_ARGS[@]}"
 
 # ranks write ${OUT}.r*.jsonl incrementally; merge into the final ${OUT} JSON
 python -m eval.merge_len_shards --out "${OUT}"

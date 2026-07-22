@@ -16,7 +16,7 @@ from transformers import (
 )
 from transformers.trainer_utils import get_last_checkpoint
 
-from data.precompute_loader import load_cache
+from data.precompute_loader import load_cache, load_mixed_cache, parse_kv
 from data.dataset import IGNORE_INDEX
 from data.tokens import add_trace_tokens, resize_and_init
 from .wb import wandb_init
@@ -56,6 +56,9 @@ def main():
     ap.add_argument("--max_steps", type=int, default=-1)  # >0 for smoke
     ap.add_argument("--save_steps", type=int, default=500)
     ap.add_argument("--cache_dir", default=None)  # load offline tokenized examples from precompute.py
+    ap.add_argument("--ratio", nargs="+", default=None)  # PATH_OR_GLOB:WEIGHT ...; overrides --cache_dir
+    ap.add_argument("--total_n", type=int, default=None)
+    ap.add_argument("--seed", type=int, default=42)
     args = ap.parse_args()
 
     tok = AutoTokenizer.from_pretrained(args.model, use_fast=True)
@@ -66,8 +69,12 @@ def main():
     n_added = add_trace_tokens(tok)
     resize_and_init(model, tok, n_added)
 
-    ds = [sft_pair(e)
-          for e in load_cache(args.cache_dir, max_len=args.max_seq_len, n_samples=args.n_samples)]
+    if args.ratio:
+        cache = load_mixed_cache(ratio=parse_kv(args.ratio), total_n=args.total_n,
+                                  seed=args.seed, max_len=args.max_seq_len)
+    else:
+        cache = load_cache(args.cache_dir, max_len=args.max_seq_len, n_samples=args.n_samples)
+    ds = [sft_pair(e) for e in cache]
     print(f"{len(ds)} trace examples")
 
     report_to = wandb_init(args, "sft")

@@ -13,4 +13,5 @@ results_*.json
 results/**/*.json
 data/*/data/
 data/cache/
+data/LenBuckets/
 *.out

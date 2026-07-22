@@ -15,7 +15,7 @@ import os
 import torch
 from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
 
-from data.precompute_loader import _len, load_cache
+from data.precompute_loader import _len, load_cache, load_mixed_cache, parse_kv
 from data.dataset import _prompt_str
 from data.tokens import add_trace_tokens, token_ids
 from eval.codi_infer import gen_latent, gen_single, load_codi, load_codi_single
@@ -38,6 +38,8 @@ def main():
     ap.add_argument("--out", default="")
     ap.add_argument("--sliding_window", type=int, default=0)
     ap.add_argument("--attn_impl", default="flash_attention_2")
+    ap.add_argument("--per_bucket_n", nargs="+", default=None)  # PATH_OR_GLOB:N ...; overrides --dataset
+    ap.add_argument("--seed", type=int, default=42)
     args = ap.parse_args()
 
     rank = int(os.environ.get("RANK", 0))
@@ -91,10 +93,13 @@ def main():
                 n_fwd = len(g) + args.latent_steps + 1
             return [(g, len(g), n_fwd)]
 
+    if args.per_bucket_n:
+        cache = load_mixed_cache(per_bucket_n=parse_kv(args.per_bucket_n, cast=int),
+                                  seed=args.seed, max_len=args.max_len)
+    else:
+        cache = load_cache(args.dataset, min_len=args.min_len, max_len=args.max_len, n_samples=args.n_samples)
     rows = [{"id": e["row_id"], "code": e["code"], "input": e["input"], "output": e["output"],
-             "trace_len": _len(e)}
-            for e in load_cache(args.dataset, min_len=args.min_len, max_len=args.max_len,
-                                n_samples=args.n_samples)]
+             "trace_len": _len(e)} for e in cache]
     shard = sorted(rows[rank::world], key=lambda r: r["trace_len"])  # length-homogeneous batches, balanced tail
     caps = [args.max_new_tokens if args.mode == "single"
             else min(args.max_new_tokens, math.ceil(r["trace_len"] * args.len_mult)) for r in shard]

@@ -67,10 +67,18 @@ case "$MODE" in
     exit 1 ;;
 esac
 
+# Length-mixing experiment (MODE=frozen|multi only): RATIO="PATH_OR_GLOB:WEIGHT ..." (e.g.
+# "data/cache/lenbuckets/0-256/shard[0-7]:1.0") + TOTAL_N switches train_codi.py to
+# load_mixed_cache; --cache_dir is unused in that case.
+MIX_ARGS=()
+[ -n "${RATIO:-}" ] && MIX_ARGS+=(--ratio $RATIO)
+[ -n "${TOTAL_N:-}" ] && MIX_ARGS+=(--total_n "$TOTAL_N")
+[ -n "${SEED:-}" ] && MIX_ARGS+=(--seed "$SEED")
+
 torchrun --nproc_per_node="$GPUS" --master_port=$((20000 + RANDOM % 10000)) -m "$MODULE" \
   --model "$MODEL" \
   --output_dir "$OUTPUT_DIR" \
-  --max_seq_len 3072 \
+  --max_seq_len "${MAX_SEQ_LEN:-3072}" \
   --epochs 5 \
   --lr 1e-5 \
   --latent_steps "${LATENT_STEPS:-1}" \
@@ -83,4 +91,4 @@ torchrun --nproc_per_node="$GPUS" --master_port=$((20000 + RANDOM % 10000)) -m "
   --gamma "${GAMMA:-1.0}" \
   --batch_size "$BATCH" \
   --grad_accum "$ACCUM" \
-  "${MODE_ARGS[@]}"
+  "${MODE_ARGS[@]}" "${MIX_ARGS[@]}"

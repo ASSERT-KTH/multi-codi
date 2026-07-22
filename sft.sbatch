@@ -22,14 +22,22 @@ case "$SIZE" in
 esac
 : "${OUTPUT_DIR:=model_weights/sft-coder-${SIZE}}"
 
+# Length-mixing experiment: RATIO="PATH_OR_GLOB:WEIGHT ..." (e.g. "data/cache/lenbuckets/0-256/shard[0-7]:1.0")
+# + TOTAL_N switches train_sft.py to load_mixed_cache; --cache_dir is unused in that case.
+MIX_ARGS=()
+[ -n "${RATIO:-}" ] && MIX_ARGS+=(--ratio $RATIO)
+[ -n "${TOTAL_N:-}" ] && MIX_ARGS+=(--total_n "$TOTAL_N")
+[ -n "${SEED:-}" ] && MIX_ARGS+=(--seed "$SEED")
+
 torchrun --nproc_per_node=4 --master_port=$((20000 + RANDOM % 10000)) -m train.train_sft \
   --model "$MODEL" \
   --output_dir "$OUTPUT_DIR" \
-  --cache_dir data/cache/sft_train \
-  --max_seq_len 3072 \
+  --cache_dir "${CACHE_DIR:-data/cache/sft_train}" \
+  --max_seq_len "${MAX_SEQ_LEN:-3072}" \
   --epochs 4 \
   --lr "${LR:-2e-5}" \
   --batch_size "${BATCH:-1}" \
   --grad_accum "${ACCUM:-8}" \
   --max_steps "${MAX_STEPS:--1}" \
-  --save_steps "${SAVE_STEPS:-500}"
+  --save_steps "${SAVE_STEPS:-500}" \
+  "${MIX_ARGS[@]}"

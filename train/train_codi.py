@@ -16,7 +16,7 @@ import torch.nn.functional as F
 from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
 
 from train.codi_core import add_common_args, build_projector, latent_block, run_training, shared_teacher, sliding_window
-from data.precompute_loader import load_cache
+from data.precompute_loader import load_cache, load_mixed_cache, parse_kv
 from data.dataset import IGNORE_INDEX
 from data.tokens import add_trace_tokens, token_ids
 
@@ -140,6 +140,9 @@ def main():
     ap.add_argument("--frozen_teacher", default="")  # path to frozen SFT teacher; "" -> shared-weight (legacy)
     ap.add_argument("--kd_target", default="hidden", choices=["hidden", "logit"])  # key-hidden align: smooth_l1 vs KL
     ap.add_argument("--kd_temp", type=float, default=2.0)  # logit-KD temperature
+    ap.add_argument("--ratio", nargs="+", default=None)  # PATH_OR_GLOB:WEIGHT ...; overrides --cache_dir
+    ap.add_argument("--total_n", type=int, default=None)
+    ap.add_argument("--seed", type=int, default=42)
     args = ap.parse_args()
 
     tok = AutoTokenizer.from_pretrained(args.model, use_fast=True)
@@ -159,7 +162,11 @@ def main():
                       kd_layers=args.kd_layers,
                       teacher=teacher, kd_target=args.kd_target, kd_temp=args.kd_temp)
 
-    ds = load_cache(args.cache_dir, max_len=args.max_seq_len, n_samples=args.n_samples)
+    if args.ratio:
+        ds = load_mixed_cache(ratio=parse_kv(args.ratio), total_n=args.total_n,
+                               seed=args.seed, max_len=args.max_seq_len)
+    else:
+        ds = load_cache(args.cache_dir, max_len=args.max_seq_len, n_samples=args.n_samples)
     print(f"{len(ds)} codi examples, latent_steps={args.latent_steps}")
     run_training(model, tok, ds, args, "codi")
 
