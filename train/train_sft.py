@@ -73,7 +73,6 @@ def main():
     ap.add_argument("--batch_size", type=int, default=4)
     ap.add_argument("--grad_accum", type=int, default=4)
     ap.add_argument("--max_steps", type=int, default=-1)  # >0 for smoke
-    ap.add_argument("--save_steps", type=int, default=500)
     ap.add_argument("--cache_dir", default=None)  # load offline tokenized examples from precompute.py
     ap.add_argument("--ratio", nargs="+", default=None)  # PATH_OR_GLOB:WEIGHT ...; overrides --cache_dir
     ap.add_argument("--total_n", type=int, default=None)
@@ -125,8 +124,7 @@ def main():
         gradient_checkpointing=True,
         gradient_checkpointing_kwargs={"use_reentrant": False},
         logging_steps=5,
-        save_strategy="steps",
-        save_steps=args.save_steps,
+        save_strategy="epoch",  # one checkpoint per epoch, so per-epoch eval data is available
         save_total_limit=None,  # keep every checkpoint
         report_to=report_to,
     )

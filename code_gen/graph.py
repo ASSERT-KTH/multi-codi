@@ -6,8 +6,10 @@
           | {t:for,i,trip,body} | {t:while,cond,body} | {t:if,cond,then,els}
     prog := {funcs:[{name,params,body,ret}], entry, input}
 
-`hole` is the trip count of one randomly chosen loop of `f`: the single length lever.
-Values stay bounded because `_bound` is an interval estimate and `_fit` inserts a
+`hole` is the trip count of a loop of `f` not nested in an `if`; a program can expose
+several (`prog["holes"]`), each fillable independently -- never both ends of a loop
+nesting, so one hole's count can't multiply into another's. Values stay bounded because `_bound`
+is an interval estimate and `_fit` inserts a
 reducer (`% m` or `& mask`) exactly where it exceeds LIMIT -- on loop-carried updates
 always, on straight-line code only when it overflows. `while` is only ever emitted as
 `i = 0 / while i < N / ... / i = i + 1`, so it terminates by construction.
@@ -19,7 +21,8 @@ import argparse, json, math, random
 
 LIMIT, DEPTH, NEST, MAXW = 10**6, 3, 2, 20
 SPLIT = (2, 4)                  # per-statement split threshold is sampled from here, for variety
-TRIP, RECD = 12, 120           # a call inside a `for TRIP` inside a `for TRIP` must stay cheap
+TRIP, RECD_LO, RECD = 12, 5, 30   # recursion depth is uniform over [RECD_LO, RECD]
+                                    # -- a call inside a `for TRIP` inside a `for TRIP` must stay cheap
 MODS = (17, 97, 251, 1009, 4093, 9973, 65521)
 CALLB = max(MODS)
 SMALL = 64                     # `a // c` and `a >> c` collapse to 0 below this
@@ -203,7 +206,7 @@ def _call(rng, s):
     name, np, rec = rng.choice(s["callees"])
     raw = [_reduce(rng, s, _rhs(rng, s, False)) for _ in range(np)]
     if rec:
-        raw[0] = C(rng.randint(20, RECD))       # recursion depth, never the length lever
+        raw[0] = C(rng.randint(RECD_LO, RECD))  # recursion depth, never the length lever
     pre = []
     a = [_arg(rng, s, e, pre, np) for e in raw]
     tgt = rng.choice(s["vars"])
@@ -222,22 +225,34 @@ def _counter(s, trip):
 def _for(rng, s, depth):
     trip = rng.randint(2, TRIP)
     i = _counter(s, trip)
+    is_cand = not s["inif"]
+    lid, ancestors = s["lid"], list(s["cand_stack"])
+    if is_cand:
+        s["lid"] += 1
+        s["cand_stack"].append(lid)
     node = {"t": "for", "i": i, "trip": C(trip),
             "body": _block(rng, s, rng.randint(1, 3), depth + 1, True)}
     s["idxs"].remove(i)
-    if not s["inif"]:
-        s["cand"].append((node, "trip"))
+    if is_cand:
+        s["cand_stack"].pop()
+        s["cand"].append((node, "trip", ancestors, lid))
     return [node]
 
 
 def _while(rng, s, depth):
     trip = rng.randint(2, TRIP)
     i = _counter(s, trip)
+    is_cand = not s["inif"]
+    lid, ancestors = s["lid"], list(s["cand_stack"])
+    if is_cand:
+        s["lid"] += 1
+        s["cand_stack"].append(lid)
     cond = {"t": "cmp", "op": "<", "l": R(i), "r": C(trip)}
     body = _block(rng, s, rng.randint(1, 3), depth + 1, True) + [A(i, B("+", R(i), C(1)))]
     s["idxs"].remove(i)
-    if not s["inif"]:
-        s["cand"].append((cond, "r"))
+    if is_cand:
+        s["cand_stack"].pop()
+        s["cand"].append((cond, "r", ancestors, lid))
     return [A(i, C(0)), {"t": "while", "cond": cond, "body": body}]
 
 
@@ -262,7 +277,7 @@ def _block(rng, s, n, depth, loop):
             out += _if(rng, s, depth, loop)
         elif s["lists"] and p < .46:
             out += _setidx(rng, s)
-        elif s["callees"] and not loop and p < .54:
+        elif s["callees"] and not loop and p < .60:
             out += _call(rng, s)
         else:
             out += _assign(rng, s, depth, loop)
@@ -273,7 +288,7 @@ def _state(rng, params, w, callees, pbnd):
     return {"vars": list(params), "idxs": [], "lists": [], "cand": [], "inif": False, "w": w,
             "nt": 0, "names": [n for n in rng.sample(NAMES, len(NAMES)) if n not in params],
             "callees": callees, "mods": rng.sample(MODS, rng.randint(2, 4)),
-            "bnd": {p: pbnd for p in params}}
+            "bnd": {p: pbnd for p in params}, "cand_stack": [], "lid": 0}
 
 
 def _func(rng, name, params, w, callees, pbnd=CALLB):
@@ -284,7 +299,7 @@ def _func(rng, name, params, w, callees, pbnd=CALLB):
         body.append(A(b, {"t": "list", "v": [rng.randrange(m) for _ in range(ln)]}))
         s["lists"].append((b, ln, m))
         s["bnd"][b] = m - 1
-    body += _block(rng, s, max(w, rng.randint(3, 8)), 0, False)
+    body += _block(rng, s, w, 0, False)
     locs = [v for v in s["vars"] if v not in params]     # returning a param wastes the body
     ret = _split(rng, s, _rhs(rng, s, True, locs), body, rng.randint(*SPLIT))
     return {"name": name, "params": params, "body": body, "ret": ret}, s
@@ -304,10 +319,10 @@ def _recfunc(rng, w):
 
 def sample(rng):
     funcs, callees = [], []
-    if rng.random() < .45:
+    if rng.random() < .35:
         funcs.append(_recfunc(rng, rng.randint(1, 3)))
         callees.append(("rec", 2, True))
-    for i in range(rng.randint(0, 2)):
+    for i in range(round(math.exp(rng.uniform(math.log(1), math.log(7)))) - 1):
         np = rng.randint(1, 3)
         fn, _ = _func(rng, f"fn{i}", rng.sample(NAMES[:8], np), rng.randint(2, 6), list(callees))
         funcs.append(fn)
@@ -316,9 +331,23 @@ def sample(rng):
     main, s = _func(rng, "f", ["x"], w, callees, pbnd=20)
     if not s["cand"]:
         main["body"] += _for(rng, s, 0)
-    node, key = rng.choice(s["cand"])
-    node[key] = {"t": "hole", "n": "k"}
-    return {"funcs": funcs + [main], "entry": "f", "input": rng.randint(1, 20)}
+    order = list(range(len(s["cand"])))
+    rng.shuffle(order)
+    want = rng.randint(1, len(s["cand"]))
+    chosen, taken = [], set()      # never pick both a loop and one of its ancestors/descendants
+    for idx in order:
+        if len(chosen) >= want:
+            break
+        node, key, ancestors, lid = s["cand"][idx]
+        if lid in taken or any(a in taken for a in ancestors):
+            continue
+        chosen.append((node, key))
+        taken.add(lid)
+        taken.update(ancestors)
+    holes = [f"k{i}" for i in range(len(chosen))]
+    for h, (node, key) in zip(holes, chosen):
+        node[key] = {"t": "hole", "n": h}
+    return {"funcs": funcs + [main], "entry": "f", "input": rng.randint(1, 20), "holes": holes}
 
 
 def main():
