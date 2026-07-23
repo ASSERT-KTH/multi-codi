@@ -29,7 +29,7 @@ MIX_ARGS=()
 [ -n "${TOTAL_N:-}" ] && MIX_ARGS+=(--total_n "$TOTAL_N")
 [ -n "${SEED:-}" ] && MIX_ARGS+=(--seed "$SEED")
 
-torchrun --nproc_per_node=4 --master_port=$((20000 + RANDOM % 10000)) -m train.train_sft \
+torchrun --nproc_per_node="${NPROC:-4}" --master_port=$((20000 + RANDOM % 10000)) -m train.train_sft \
   --model "$MODEL" \
   --output_dir "$OUTPUT_DIR" \
   --cache_dir "${CACHE_DIR:-data/cache/sft_train}" \
