@@ -2,7 +2,7 @@
 #SBATCH -A berzelius-2026-167
 #SBATCH -C fat
 #SBATCH --gpus 2
-#SBATCH -t 12:00:00
+#SBATCH -t 23:59:00
 #SBATCH -J eval
 #SBATCH -o eval_%j.log
 
