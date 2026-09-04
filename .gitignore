@@ -13,5 +13,8 @@ results_*.json
 results/**/*.json
 data/*/data/
 data/cache/
+data/cache
 data/LenBuckets/
+code_gen/gen
+eval/diag
 *.out
