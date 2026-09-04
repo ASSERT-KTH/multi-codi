@@ -1,0 +1,14 @@
+W0723 23:53:34.690000 706383 site-packages/torch/distributed/run.py:766] 
+W0723 23:53:34.690000 706383 site-packages/torch/distributed/run.py:766] *****************************************
+W0723 23:53:34.690000 706383 site-packages/torch/distributed/run.py:766] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W0723 23:53:34.690000 706383 site-packages/torch/distributed/run.py:766] *****************************************
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights:  35%|███▍      | 118/338 [00:00<00:00, 1169.49it/s]Loading weights:  70%|██████▉   | 235/338 [00:00<00:00, 889.95it/s] Loading weights:  97%|█████████▋| 328/338 [00:00<00:00, 824.88it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 888.87it/s]
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 5894.16it/s]
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 5454.53it/s]
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 6296.10it/s]
+Loading weights: 100%|██████████| 338/338 [00:00<00:00, 5632.22it/s]
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 6256.98it/s]
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 6034.82it/s]
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 5949.14it/s]
+  rank0 160/275  pass@1=0.2875
+merged 8 shards  pass@1=0.1886 valid_format=0.9195 (n=2200) mean_fwd=3522.7 mean_gen=3522.7

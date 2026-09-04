@@ -1,0 +1,14 @@
+W0723 22:44:15.700000 609085 site-packages/torch/distributed/run.py:766] 
+W0723 22:44:15.700000 609085 site-packages/torch/distributed/run.py:766] *****************************************
+W0723 22:44:15.700000 609085 site-packages/torch/distributed/run.py:766] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W0723 22:44:15.700000 609085 site-packages/torch/distributed/run.py:766] *****************************************
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights:  20%|█▉        | 67/338 [00:00<00:00, 658.90it/s]Loading weights:  39%|███▉      | 133/338 [00:00<00:00, 620.15it/s]Loading weights:  59%|█████▉    | 200/338 [00:00<00:00, 625.14it/s]Loading weights:  78%|███████▊  | 263/338 [00:00<00:00, 545.64it/s]Loading weights:  96%|█████████▋| 326/338 [00:00<00:00, 568.65it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 602.55it/s]
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 5994.83it/s]
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 5763.00it/s]
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 6316.16it/s]
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 6299.80it/s]
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 5703.14it/s]
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 6158.53it/s]
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 6869.14it/s]
+  rank0 160/275  pass@1=0.2375
+merged 8 shards  pass@1=0.1373 valid_format=0.8868 (n=2200) mean_fwd=3437.3 mean_gen=3437.3

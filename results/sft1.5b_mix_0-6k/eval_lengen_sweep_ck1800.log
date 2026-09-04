@@ -1,0 +1,14 @@
+W0724 01:31:58.947000 3964275 site-packages/torch/distributed/run.py:766] 
+W0724 01:31:58.947000 3964275 site-packages/torch/distributed/run.py:766] *****************************************
+W0724 01:31:58.947000 3964275 site-packages/torch/distributed/run.py:766] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W0724 01:31:58.947000 3964275 site-packages/torch/distributed/run.py:766] *****************************************
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights:  14%|█▎        | 46/338 [00:00<00:00, 439.47it/s]Loading weights:  16%|█▌        | 53/338 [00:00<00:00, 508.62it/s]Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights:  52%|█████▏    | 176/338 [00:00<00:00, 892.13it/s]Loading weights:  52%|█████▏    | 177/338 [00:00<00:00, 873.61it/s]Loading weights:  55%|█████▌    | 186/338 [00:00<00:00, 1859.82it/s]Loading weights:  55%|█████▌    | 187/338 [00:00<00:00, 1826.33it/s]Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights:  74%|███████▍  | 250/338 [00:00<00:00, 2356.55it/s]Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights:  78%|███████▊  | 264/338 [00:00<00:00, 801.36it/s]Loading weights:  78%|███████▊  | 265/338 [00:00<00:00, 786.74it/s]Loading weights:  82%|████████▏ | 277/338 [00:00<00:00, 2754.99it/s]Loading weights:  31%|███       | 104/338 [00:00<00:00, 1037.75it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 790.18it/s]
+Loading weights: 100%|██████████| 338/338 [00:00<00:00, 1531.61it/s]
+Loading weights: 100%|██████████| 338/338 [00:00<00:00, 1089.96it/s]
+Loading weights: 100%|██████████| 338/338 [00:00<00:00, 1113.73it/s]
+Loading weights: 100%|██████████| 338/338 [00:00<00:00, 2046.29it/s]
+Loading weights: 100%|██████████| 338/338 [00:00<00:00, 783.42it/s]
+Loading weights: 100%|██████████| 338/338 [00:00<00:00, 2827.77it/s]
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 5614.71it/s]
+  rank0 160/275  pass@1=0.3250
+merged 8 shards  pass@1=0.2150 valid_format=0.9218 (n=2200) mean_fwd=3545.8 mean_gen=3545.8
