@@ -1,4 +1,4 @@
-# codi_trace — Towards Latent Code World Models
+# milti-codi — Towards Latent Code World Models
 
 Sirui Liu · André Silva · Martin Monperrus — KTH
 
@@ -62,11 +62,24 @@ loss), and a standalone CWM-32B QLoRA path.
 CRUXEval-O (800) is held out for evaluation; MBPP + HumanEval + PyX (~65k traceable rows) train.
 
 ```bash
-python -m data.MBPP.convert                              # also HumanEval, PyX, Ds256k
+# convert: turn each raw dataset into {id, code, input, output} rows
+python -m data.MBPP.convert
+python -m data.HumanEval.convert
+python -m data.PyX.convert
+python -m data.Ds256k.convert
+
+# precompute: trace the training set and write the cache (diff target, shared by SFT/CODI)
 python -m data.precompute --model <base> --workers 32 \
   --sources data/MBPP/data data/HumanEval/data data/PyX/data --out data/cache/codi_train
-python -m data.precompute ... --out data/cache/codi_train_full --trace_target full
-python -m data.precompute --sources cruxeval --out data/cache/cruxeval_codi ...
+
+# precompute: held-out CRUXEval-O evaluation set
+python -m data.precompute --model <base> --workers 32 \
+  --sources cruxeval --out data/cache/cruxeval_codi
+
+# precompute (recon only, skip by default): same training set, also write the full target
+python -m data.precompute --model <base> --workers 32 \
+  --sources data/MBPP/data data/HumanEval/data data/PyX/data \
+  --out data/cache/codi_train_full --trace_target full
 ```
 
 One cache serves both stages; length filtering happens at load. Only `codi_train_full` carries the
@@ -101,19 +114,26 @@ Variants swap the module and add their own flags:
 Ranks write `${OUT}.r*.jsonl`; `merge_len_shards` produces the final JSON.
 
 ```bash
+# stage 1: each rank evaluates in parallel, writing its own ${OUT}.r*.jsonl shard
 torchrun --nproc_per_node=8 -m eval.eval_len --mode codi --model <ckpt> \
   --dataset data/cache/cruxeval_codi --max_new_tokens 16384 --len_mult 1.5 \
-  --latent_steps 1 --out results/<run>/cruxeval_ck900.json
-python -m eval.merge_len_shards --out results/<run>/cruxeval_ck900.json
+  --latent_steps 1 --out <out.json>
+
+# stage 2: merge all shards into the final JSON
+python -m eval.merge_len_shards --out <out.json>
 ```
 
-`--mode sft|codi|single` picks the decoder. For the long held-out set, add
-`--dataset data/cache/codi_train --min_len 3073` (the leak boundary is the training `max_seq_len`).
+`--mode sft|codi|single` picks the decoder. `--min_len` filters a cache to rows at or above a given trace length.
+
+> In training, if use `--dataset data/cache/codi_train --min_len 3073`, which only takes rows up to `max_seq_len` (3072). Then this `--min_len 3073` selects the long rows the model never trained on as evaluation.
+
 QLoRA checkpoints use `eval.eval_len_qlora` with `--base_model` + `--adapter_dir`.
 
-Per-row cap is `min(16384, ceil(trace_len × 1.5))`. **Truncation is judged on forward steps**
-(`n_fwd ≥ max_new`) for teacher and student alike — the student's latent steps make `n_fwd > n_gen`,
-so it can blow the budget while emitting fewer tokens. A truncated row scores invalid → wrong.
+---
+
+Each row gets a forward-step budget `min(args.max_new_tokens, ceil(trace_len * args.len_mult))`. A row is **truncated when `n_fwd` exceeds budget**, same rule for teacher and student. `n_fwd` counts every forward pass, not just emitted tokens. For the student, each latent step is a forward pass that emits no token, so `n_fwd > n_gen`. 
+
+Any truncated row scores invalid, which counts as wrong regardless of what it generated.
 
 Metrics: **pass@1** (correct/n) · **valid%** (parseable and in-budget) · **cond. acc**
 (correct/valid) · **fwd/ref** (`n_fwd / trace_len`) · **trunc%**.
